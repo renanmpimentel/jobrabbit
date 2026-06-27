@@ -1,0 +1,58 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0] - 2026-06-30
+
+First public release. 🐇
+
+jobRabbit auto-applies to jobs from your terminal: it orchestrates the **Claude Code CLI**
+(`claude`) which, via the **Claude in Chrome** extension, browses job sites in your real
+logged-in Chrome, scores each role's *fit* against your profile, generates a tailored CV /
+cover letter, and tries to apply — pausing for you (via a desktop notification) on captchas,
+logins, or fields it can't fill.
+
+### Added
+- **Two front-ends from a single Rust binary**: a local **web UI** (React + Vite + Tailwind,
+  served by an Axum backend, the default) and a classic **TUI** (ratatui/crossterm, `--tui`).
+- **Real-browser agent**: spawns `claude` over a PTY, reads `--output-format stream-json`, and
+  drives Claude in Chrome (no headless, no Playwright). Agent → app communication uses an NDJSON
+  protocol (`job` / `application` / `pending` / `answer` / `feedback` / `profile` / `cv_review`)
+  persisted to SQLite.
+- **Profile import** from a résumé (PDF / DOCX / TXT) or a LinkedIn URL, headless via
+  `--import-cv` / `--import-linkedin` or from the UI.
+- **Fit scoring** (0.0–1.0) per job against the profile.
+- **ATS-aware playbooks** (Gupy, LinkedIn, Greenhouse, Lever, Workday, generic) with a
+  per-locale, user-overridable layout (`<data_dir>/playbooks/<locale>/<slug>.md`).
+- **Answer bank**: reusable, English-keyed screening answers used to fill forms; the agent can
+  learn new ones during a run.
+- **Apply modes**: `review` (prepare → you approve), `autonomous` (auto-apply on high fit),
+  `hybrid` (auto above a threshold), plus a global `dry-run`.
+- **ATS résumé checker**: scores a CV 0–100 with an actionable report, general or against a
+  target job; can also generate an ATS-optimized version (export to PDF/DOCX).
+- **Internationalization**: English-first with selectable pt-BR — for the UI *and* the agent.
+  Locale-aware prompts (`src/agent/prompts.rs`), playbooks (`src/playbooks/{en,pt-br}/`), and
+  web-ui resources (`web-ui/src/locales/{en,pt-BR}.json`). The web language switcher updates the
+  backend locale so the agent operates in the chosen language.
+- **Linux integrations**: idle detection (`user-idle`), desktop notifications
+  (`notify-rust` / D-Bus), keyring (`keyring` v3 / Secret Service).
+- **CLI helpers**: `--snapshot` (render TUI screens as text), `--doctor` (environment
+  diagnostics), `--selftest-agent` (real end-to-end check through the whole pipeline).
+- **Tooling**: Docker-based build (`make` targets; the host needs no Rust/Node), GitHub Actions
+  CI (fmt, clippy `-D warnings`, tests, web typecheck/build), and a `build.rs` that keeps a fresh
+  clone compiling without a pre-built frontend.
+- Project meta: MIT license, bilingual README (EN + pt-BR), `CONTRIBUTING`, `CODE_OF_CONDUCT`,
+  `SECURITY`, issue/PR templates.
+
+### Notes
+- Existing local databases are migrated automatically on open: legacy Portuguese answer-bank
+  keys (e.g. `pretensao_salarial`) become their English equivalents (e.g. `salary_expectation`),
+  preserving saved values.
+
+[Unreleased]: https://github.com/renanmpimentel/jobrabbit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/renanmpimentel/jobrabbit/releases/tag/v0.1.0
