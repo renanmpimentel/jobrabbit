@@ -147,6 +147,10 @@
     "data": "Data",
     "cvPath": "CV Path (upload)",
     "linkedinUrl": "LinkedIn URL",
+    "dangerZone": "Danger Zone",
+    "resetRuns": "Clear execution data",
+    "resetRunsHint": "removes found jobs, applications, pending actions, sessions and feedback — keeps your profile, searches and answers",
+    "resetRunsConfirm": "Clear all execution data? Found jobs, applications, pending actions, sessions and feedback will be permanently deleted. Your profile, searches and answers are kept.",
     "save": "Save Configuration"
   },
   "ui": {

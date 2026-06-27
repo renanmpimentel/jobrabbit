@@ -42,6 +42,11 @@ export default function Config() {
     post("/settings", next).then(invalidate).catch((e) => alert(String(e)));
   };
 
+  const resetRuns = () => {
+    if (!confirm(t("config.resetRunsConfirm"))) return;
+    post("/reset-runs").then(invalidate).catch((e) => alert(String(e)));
+  };
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
@@ -131,6 +136,17 @@ export default function Config() {
           </Row>
           <Row label={t("config.linkedinUrl")}>
             <Input value={s.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} className="w-64" />
+          </Row>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title={t("config.dangerZone")} />
+        <div className="divide-y divide-edge">
+          <Row label={t("config.resetRuns")} hint={t("config.resetRunsHint")}>
+            <Button variant="danger" onClick={resetRuns}>
+              {t("config.resetRuns")}
+            </Button>
           </Row>
         </div>
       </Card>

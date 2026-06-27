@@ -147,6 +147,10 @@
     "data": "Dados",
     "cvPath": "Caminho do CV (upload)",
     "linkedinUrl": "LinkedIn URL",
+    "dangerZone": "Zona de risco",
+    "resetRuns": "Limpar dados de execução",
+    "resetRunsHint": "remove vagas encontradas, candidaturas, pendências, sessões e feedback — mantém seu perfil, buscas e respostas",
+    "resetRunsConfirm": "Limpar todos os dados de execução? Vagas encontradas, candidaturas, pendências, sessões e feedback serão apagados permanentemente. Seu perfil, buscas e respostas são mantidos.",
     "save": "Salvar configurações"
   },
   "ui": {
