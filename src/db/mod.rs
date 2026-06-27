@@ -765,7 +765,8 @@ mod tests {
         // Preservado: intacto.
         assert_eq!(db.get_profile().unwrap().background, "bg");
         assert_eq!(db.list_variants().unwrap().len(), 1);
-        // Answers are seeded with all canonical fields (18) + our 1 custom = 19 total
+        // Answers are seeded with all canonical fields; set_answer updates one
+        // of them in place (english_level), so the seeded set is preserved intact.
         let answers = db.get_answers().unwrap();
         assert!(answers.len() > 1);
         assert!(answers.iter().any(|a| a.key == "english_level" && a.value == "advanced"));
