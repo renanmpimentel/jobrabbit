@@ -1,0 +1,25 @@
+# jobRabbit development/build environment.
+# Image with the Rust toolchain + the system libs the crates need:
+#  - build-essential / gcc : compile rusqlite (bundled) and crates with build.rs
+#  - pkg-config            : library discovery
+#  - libdbus-1-dev         : keyring (Secret Service) and notify-rust via D-Bus
+#  - libxcb / libxss-dev   : user-idle (XScreenSaver / X11)
+FROM rust:1-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libdbus-1-dev \
+    libxcb1-dev \
+    libxss-dev \
+    libx11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Formatting/lint components (useful for `make fmt` and `cargo clippy`).
+RUN rustup component add rustfmt clippy
+
+WORKDIR /app
+
+# Sources are mounted via a volume in docker-compose; this image just carries
+# the toolchain so `docker compose run` (and a standalone `docker build`) work.
+CMD ["cargo", "build"]

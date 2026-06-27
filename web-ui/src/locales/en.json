@@ -1,0 +1,156 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "pending": "Pending",
+    "session": "Session",
+    "ats": "ATS",
+    "feedback": "Feedback",
+    "doctor": "Health",
+    "config": "Config"
+  },
+  "header": {
+    "running": "Running",
+    "idle": "idle",
+    "error": "error",
+    "connected": "connected to the agent",
+    "reconnecting": "reconnecting…",
+    "runSearch": "Run search",
+    "runningEllipsis": "Running…"
+  },
+  "common": {
+    "language": "Language"
+  },
+  "status": {
+    "running": "Running",
+    "idle": "idle",
+    "error": "error"
+  },
+  "dashboard": {
+    "healthBannerFails_one": "{{count}} missing dependency — agent won't run",
+    "healthBannerFails_other": "{{count}} missing dependencies — agent won't run",
+    "healthBannerWarnings_one": "{{count}} recommended adjustment in environment",
+    "healthBannerWarnings_other": "{{count}} recommended adjustments in environment",
+    "viewHealth": "View Health",
+    "jobsFound": "Jobs Found",
+    "applications": "Applications",
+    "applied": "Applied",
+    "pendingActions": "Pending",
+    "recentJobs": "Recent Jobs",
+    "recentJobsHint": "sorted by discovery date",
+    "noJobs": "No jobs yet — click \"Run search\" at the top."
+  },
+  "profile": {
+    "background": "Background",
+    "cvBase": "Base CV",
+    "saveProfile": "Save Profile",
+    "searchVariants": "Search Variants",
+    "searchVariantsHint": "only active variants are used in search",
+    "noVariants": "No variants. Add one below.",
+    "disabled": "disabled",
+    "remove": "Remove",
+    "labelPlaceholder": "label (e.g.: Senior Remote)",
+    "queryPlaceholder": "search terms",
+    "addVariant": "Add Variant",
+    "importProfile": "Import Profile",
+    "importProfileHint": "agent builds profile from CV or LinkedIn",
+    "cvPathPlaceholder": "path to CV (PDF/DOCX) on your computer",
+    "importCv": "Import from CV",
+    "linkedinPlaceholder": "https://www.linkedin.com/in/yourname",
+    "importLinkedin": "Import from LinkedIn"
+  },
+  "pending": {
+    "title": "Pending",
+    "hint": "actions that need you (no duplicates)",
+    "kind": {
+      "approval": "Approval",
+      "answer_needed": "Question",
+      "login": "Login",
+      "captcha": "Captcha",
+      "required_field": "Field"
+    },
+    "openJob": "open job ↗",
+    "approve": "Approve & Submit",
+    "answerPlaceholder": "your answer…",
+    "answer": "Answer",
+    "resolve": "Resolve",
+    "noActions": "No pending actions. 🎉"
+  },
+  "session": {
+    "title": "Agent Session",
+    "liveHint": "live stream",
+    "notConnected": "reconnecting…",
+    "filterPlaceholder": "filter…",
+    "following": "Following",
+    "paused": "Paused",
+    "noActivity": "waiting for activity — click \"Run search\" to see the agent live."
+  },
+  "feedback": {
+    "title": "Agent Feedback",
+    "hint": "analysis of recent results and suggestions",
+    "generateAnalysis": "Generate Analysis",
+    "generating": "Generating…",
+    "noFeedback": "No feedback yet. Click \"Generate Analysis\"."
+  },
+  "ats": {
+    "title": "ATS Review",
+    "notEvaluated": "not yet evaluated",
+    "noReview": "No review. Choose a target and click \"Evaluate\".",
+    "improvedCv": "Improved CV Version",
+    "improvedCvHint": "optimized for ATS — ready to send",
+    "copied": "Copied",
+    "copy": "Copy",
+    "download": "Download",
+    "noCvVersion": "No version generated yet. Click \"Generate Improved Version\".",
+    "targetAndActions": "Target & Actions",
+    "targetLabel": "Analysis Target",
+    "generalQuality": "General ATS Quality",
+    "againstJob": "Against Found Job",
+    "pasteDescription": "Paste Job Description",
+    "selectJob": "select a job…",
+    "pasteJobPlaceholder": "paste the job description…",
+    "evaluate": "Evaluate (score + report)",
+    "generateImproved": "✨ Generate Improved Version",
+    "generating": "Generating…"
+  },
+  "doctor": {
+    "title": "Environment Health",
+    "hint": "dependencies and configuration needed to run",
+    "ok": "ok",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings",
+    "errors_one": "{{count}} error",
+    "errors_other": "{{count}} errors",
+    "refresh": "Re-check",
+    "checking": "checking…",
+    "noResults": "no results"
+  },
+  "config": {
+    "loading": "loading…",
+    "application": "Application",
+    "modeLabel": "Application Mode",
+    "modeHint": "review = prepares only; autonomous = submits; hybrid = by fit",
+    "hybridLabel": "Hybrid Threshold (fit)",
+    "hybridHint": "in hybrid mode, auto-apply only above this fit",
+    "dryRunLabel": "Dry-run (Simulation)",
+    "dryRunHint": "searches and evaluates, but NEVER submits applications",
+    "languageFilterLabel": "Filter jobs by language",
+    "languageFilterHint": "only consider jobs in the selected language",
+    "agent": "Agent",
+    "useChrome": "Use Claude in Chrome",
+    "useChromeHint": "uses your logged-in Chrome browser",
+    "bypassPermissions": "Skip Permissions (Autonomous)",
+    "bypassPermissionsHint": "--permission-mode bypassPermissions",
+    "autoRun": "Auto-run When Idle",
+    "idleThreshold": "Idle After (seconds)",
+    "claudeBinary": "Claude Binary",
+    "data": "Data",
+    "cvPath": "CV Path (upload)",
+    "linkedinUrl": "LinkedIn URL",
+    "save": "Save Configuration"
+  },
+  "ui": {
+    "live": "LIVE",
+    "off": "OFF"
+  }
+}

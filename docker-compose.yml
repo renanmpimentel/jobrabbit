@@ -1,0 +1,43 @@
+# jobRabbit dev environment.
+#
+# Build:   docker compose run --rm dev cargo build
+# Test:    docker compose run --rm dev cargo test
+# Shell:   docker compose run --rm dev bash
+#
+# Sources are mounted at /app and the build/registry cache lives in named
+# volumes so nothing recompiles from scratch on every run.
+#
+# To actually RUN the TUI you run the release binary on the host (where the TTY,
+# D-Bus, X11/Wayland, claude and Chrome live); these services are for build/test.
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: jobrabbit-dev
+    working_dir: /app
+    volumes:
+      - .:/app
+      - cargo-registry:/usr/local/cargo/registry
+      - target-cache:/app/target
+    # tty/stdin kept open so the TUI can run interactively when needed
+    tty: true
+    stdin_open: true
+
+  # Node toolchain for the frontend (web-ui/). Build: docker compose run --rm web npm run build
+  # Dev:  docker compose run --rm --service-ports web npm run dev  (Vite on :5173, proxies /api → backend)
+  web:
+    image: node:20-bookworm
+    working_dir: /app/web-ui
+    volumes:
+      - .:/app
+      - web-node-modules:/app/web-ui/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://localhost:8787
+
+volumes:
+  cargo-registry:
+  target-cache:
+  web-node-modules:

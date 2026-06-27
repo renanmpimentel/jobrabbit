@@ -1,0 +1,26 @@
+# Rust build output
+/target
+
+# Release binary produced by scripts/build-release.sh
+/dist
+
+# Node / web-ui
+node_modules/
+
+# Built frontend (rebuilt by `make` / build-release.sh). build.rs re-creates the
+# directory so rust-embed still compiles on a fresh clone.
+/web-ui/dist
+
+# Local runtime state
+*.db
+*.db-journal
+*.log
+
+# Environment / secrets
+.env
+.env.local
+.env.*
+
+# OS / editor cruft
+.DS_Store
+docs/

@@ -1,0 +1,59 @@
+[package]
+name = "jobrabbit"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Auto-apply to jobs from your terminal — orchestrates the Claude Code CLI + your real Chrome (Linux)."
+authors = ["Renan Martins Pimentel"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/renanmpimentel/jobrabbit"
+homepage = "https://github.com/renanmpimentel/jobrabbit"
+keywords = ["job-search", "automation", "claude", "tui", "ratatui"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "jobrabbit"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "process", "io-util", "time", "net"] }
+# Local web server (browser UI)
+axum = "0.7"
+tower-http = { version = "0.6", features = ["fs", "cors", "trace"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+# Embeds the built frontend (web-ui/dist) into the binary — single file.
+rust-embed = "8"
+# Export the improved CV to PDF and DOCX.
+genpdf = "0.2"
+docx-rs = "0.4"
+# TUI
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+# PTY to spawn `claude`
+portable-pty = "0.8"
+# JSON / serde
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Persistence
+rusqlite = { version = "0.32", features = ["bundled"] }
+# XDG paths / config
+directories = "5"
+# Errors / logs
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Linux integrations
+notify-rust = "4"
+keyring = { version = "3", features = ["sync-secret-service"] }
+user-idle = "0.5"
+# Dates
+chrono = { version = "0.4", features = ["serde"] }
+# Résumé import (PDF/DOCX → text)
+pdf-extract = "0.7"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = "0.36"
+
+[dev-dependencies]

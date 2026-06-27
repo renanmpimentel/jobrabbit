@@ -1,0 +1,215 @@
+//! Assembly of prompts and orchestration of agent execution.
+//!
+//! Pure functions (build prompts from `Db`+`Settings`) and a reusable helper
+//! for spawning. No UI dependency: TUI and web backend compose these
+//! pieces with their own guards (preflight of `claude`, logging, status).
+
+use tokio::sync::mpsc::UnboundedSender;
+
+use crate::agent::{self, prompts, AgentConfig};
+use crate::config::{self, Settings};
+use crate::db::models::PendingAction;
+use crate::db::Db;
+use crate::event::AppEvent;
+use crate::locale::Locale;
+
+/// Assembles the [`AgentConfig`] from settings.
+pub fn agent_config(settings: &Settings) -> AgentConfig {
+    AgentConfig {
+        claude_bin: settings.claude_bin.clone(),
+        cwd: config::data_dir().ok(),
+        chrome: settings.use_chrome,
+        bypass_permissions: settings.bypass_permissions,
+    }
+}
+
+/// Search prompts for all ACTIVE variants. `Err` if there are none.
+pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, String> {
+    let profile = db.get_profile().unwrap_or_default();
+    let variants: Vec<_> = db
+        .list_variants()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|v| v.enabled)
+        .collect();
+    if variants.is_empty() {
+        return Err("no active variant — add/enable in Profile".into());
+    }
+    let mode = settings.apply_mode.clone();
+    Ok(variants
+        .iter()
+        .map(|v| {
+            prompts::search_and_evaluate(
+                &profile,
+                v,
+                &mode,
+                settings.dry_run,
+                settings.hybrid_threshold,
+                settings.locale,
+                settings.language_filter,
+            )
+        })
+        .collect())
+}
+
+/// Prompt to ACTUALLY SUBMIT an approved application (item `approval`).
+///
+/// `Err` if the item is not an approval or does not have associated job/application.
+pub fn approval_prompt(
+    db: &Db,
+    settings: &Settings,
+    pending: &PendingAction,
+) -> Result<String, String> {
+    if pending.kind != "approval" {
+        return Err("this pending item is not an approval".into());
+    }
+    let job_id = pending.job_id.ok_or("approval without associated job")?;
+    let job = db
+        .get_job(job_id)
+        .ok()
+        .flatten()
+        .ok_or("approval job not found")?;
+    let app = db.application_for_job(job_id).ok().flatten();
+    let cv = app
+        .as_ref()
+        .and_then(|a| a.cv_generated.clone())
+        .unwrap_or_default();
+    let cover = app
+        .as_ref()
+        .and_then(|a| a.cover_letter.clone())
+        .unwrap_or_default();
+    let ats = crate::ats::detect(&job.url);
+    let playbook = crate::ats::playbook(ats, settings.locale);
+    let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    Ok(prompts::apply_for_job(
+        &job.title,
+        &job.company,
+        &job.url,
+        &cv,
+        &cover,
+        &settings.cv_file_path,
+        ats.name(),
+        &playbook,
+        &answers,
+        settings.locale,
+    ))
+}
+
+/// Base CV text for ATS evaluation: file (if any) otherwise `cv_base`.
+pub fn cv_source_text(db: &Db, settings: &Settings) -> String {
+    let path = settings.cv_file_path.trim();
+    if !path.is_empty() {
+        if let Ok(t) = crate::import::extract_text(std::path::Path::new(path)) {
+            return t;
+        }
+    }
+    db.get_profile().map(|p| p.cv_base).unwrap_or_default()
+}
+
+/// Prompt for ATS evaluation of resume (general or against a target). `Err` if
+/// there is no resume available.
+pub fn cv_review_prompt(
+    db: &Db,
+    settings: &Settings,
+    target: Option<&str>,
+) -> Result<String, String> {
+    let cv = cv_source_text(db, settings);
+    if cv.trim().is_empty() {
+        return Err("no resume — import a CV or fill in the profile".into());
+    }
+    Ok(prompts::review_cv(&cv, target, settings.locale))
+}
+
+/// Prompt to GENERATE an improved version of the resume (optimized for ATS).
+/// `Err` if there is no resume available.
+pub fn improve_cv_prompt(
+    db: &Db,
+    settings: &Settings,
+    target: Option<&str>,
+) -> Result<String, String> {
+    let cv = cv_source_text(db, settings);
+    if cv.trim().is_empty() {
+        return Err("no resume — import a CV or fill in the profile".into());
+    }
+    Ok(prompts::improve_cv(&cv, target, settings.locale))
+}
+
+/// Prompt for periodic feedback analysis (recent results).
+pub fn feedback_prompt(db: &Db, locale: Locale) -> String {
+    let profile = db.get_profile().unwrap_or_default();
+    let summary = results_summary(db);
+    prompts::analyze_feedback(&profile, &summary, locale)
+}
+
+/// Summary of recent results to feed the feedback prompt.
+pub fn results_summary(db: &Db) -> String {
+    let s = db.stats().unwrap_or_default();
+    let mut out = format!(
+        "Totals — jobs: {}, applications: {}, applied: {}, pending: {}\n",
+        s.total_jobs, s.total_applications, s.applied, s.pending_actions
+    );
+    if let Ok(jobs) = db.list_jobs() {
+        out.push_str("Recent jobs:\n");
+        for j in jobs.iter().take(10) {
+            out.push_str(&format!(
+                "- {} @ {} (fit {:.2})\n",
+                j.title,
+                j.company,
+                j.fit_score.unwrap_or(0.0)
+            ));
+        }
+    }
+    out
+}
+
+/// Prompt to build the profile from a CV file. Returns
+/// `(prompt, extracted_text)` — the caller saves the file path.
+pub fn import_cv_prompt(path: &str, locale: Locale) -> Result<(String, String), String> {
+    let text = crate::import::extract_text(std::path::Path::new(path))
+        .map_err(|e| format!("failed to read {path}: {e}"))?;
+    let prompt = prompts::build_profile(&text, locale);
+    Ok((prompt, text))
+}
+
+/// Prompt to build the profile by browsing LinkedIn.
+pub fn import_linkedin_prompt(url: &str, locale: Locale) -> String {
+    prompts::build_profile_from_linkedin(url, locale)
+}
+
+/// Spawns an agent execution that processes `prompts` in sequence.
+///
+/// Emits `AgentStarted` at the start and `AgentFinished` when done (aggregating
+/// turns/cost/error). It is the shared engine for search, application,
+/// feedback, ATS and imports.
+pub fn spawn_run(
+    cfg: AgentConfig,
+    prompts: Vec<String>,
+    done_msg: String,
+    tx: UnboundedSender<AppEvent>,
+) {
+    let _ = tx.send(AppEvent::AgentStarted);
+    tokio::spawn(async move {
+        let mut turns: u32 = 0;
+        let mut cost: f64 = 0.0;
+        let mut err = false;
+        for p in &prompts {
+            match agent::run_session(&cfg, p, None, &tx).await {
+                Ok(s) => {
+                    turns += s.num_turns.unwrap_or(0);
+                    cost += s.cost_usd.unwrap_or(0.0);
+                    err |= s.is_error;
+                }
+                Err(e) => {
+                    let _ = tx.send(AppEvent::AgentError(e.to_string()));
+                    err = true;
+                }
+            }
+        }
+        let _ = tx.send(AppEvent::AgentFinished {
+            result: Some(done_msg),
+            num_turns: Some(turns),
+            cost_usd: Some(cost),
+            is_error: err,
+        });
+    });
+}

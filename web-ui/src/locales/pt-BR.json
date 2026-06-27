@@ -1,0 +1,156 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Perfil",
+    "pending": "Pendências",
+    "session": "Sessão",
+    "ats": "ATS",
+    "feedback": "Feedback",
+    "doctor": "Saúde",
+    "config": "Config"
+  },
+  "header": {
+    "running": "rodando",
+    "idle": "ocioso",
+    "error": "erro",
+    "connected": "conectado ao agente",
+    "reconnecting": "reconectando…",
+    "runSearch": "Rodar busca",
+    "runningEllipsis": "Rodando…"
+  },
+  "common": {
+    "language": "Idioma"
+  },
+  "status": {
+    "running": "rodando",
+    "idle": "ocioso",
+    "error": "erro"
+  },
+  "dashboard": {
+    "healthBannerFails_one": "{{count}} dependência faltando — o agente não vai rodar",
+    "healthBannerFails_other": "{{count}} dependências faltando — o agente não vai rodar",
+    "healthBannerWarnings_one": "{{count}} ajuste recomendado no ambiente",
+    "healthBannerWarnings_other": "{{count}} ajustes recomendados no ambiente",
+    "viewHealth": "Ver Saúde",
+    "jobsFound": "Vagas encontradas",
+    "applications": "Candidaturas",
+    "applied": "Aplicadas",
+    "pendingActions": "Pendências",
+    "recentJobs": "Vagas recentes",
+    "recentJobsHint": "ordenadas por data de descoberta",
+    "noJobs": "Sem vagas ainda — clique em \"Rodar busca\" no topo."
+  },
+  "profile": {
+    "background": "Background",
+    "cvBase": "CV base",
+    "saveProfile": "Salvar perfil",
+    "searchVariants": "Variantes de busca",
+    "searchVariantsHint": "só as ativas são usadas na busca",
+    "noVariants": "Nenhuma variante. Adicione abaixo.",
+    "disabled": "desativada",
+    "remove": "Remover",
+    "labelPlaceholder": "rótulo (ex.: Senior Remote)",
+    "queryPlaceholder": "termos de busca",
+    "addVariant": "Adicionar variante",
+    "importProfile": "Importar perfil",
+    "importProfileHint": "o agente constrói o perfil a partir do CV ou LinkedIn",
+    "cvPathPlaceholder": "caminho do CV (PDF/DOCX) no seu computador",
+    "importCv": "Importar do CV",
+    "linkedinPlaceholder": "https://www.linkedin.com/in/voce",
+    "importLinkedin": "Importar do LinkedIn"
+  },
+  "pending": {
+    "title": "Pendências",
+    "hint": "ações que precisam de você (sem duplicatas)",
+    "kind": {
+      "approval": "Aprovação",
+      "answer_needed": "Pergunta",
+      "login": "Login",
+      "captcha": "Captcha",
+      "required_field": "Campo"
+    },
+    "openJob": "abrir vaga ↗",
+    "approve": "Aprovar e submeter",
+    "answerPlaceholder": "sua resposta…",
+    "answer": "Responder",
+    "resolve": "Resolver",
+    "noActions": "Nenhuma pendência. 🎉"
+  },
+  "session": {
+    "title": "Sessão do agente",
+    "liveHint": "stream ao vivo",
+    "notConnected": "reconectando…",
+    "filterPlaceholder": "filtrar…",
+    "following": "Seguindo",
+    "paused": "Pausado",
+    "noActivity": "aguardando atividade — clique em \"Rodar busca\" para ver o agente ao vivo."
+  },
+  "feedback": {
+    "title": "Feedback do agente",
+    "hint": "análise dos resultados recentes e sugestões",
+    "generateAnalysis": "Gerar análise",
+    "generating": "Gerando…",
+    "noFeedback": "Sem feedback ainda. Clique em \"Gerar análise\"."
+  },
+  "ats": {
+    "title": "Avaliação ATS",
+    "notEvaluated": "ainda não avaliado",
+    "noReview": "Sem avaliação. Escolha um alvo e clique em \"Avaliar\".",
+    "improvedCv": "Versão melhorada do currículo",
+    "improvedCvHint": "otimizada para ATS — pronta para enviar",
+    "copied": "Copiado",
+    "copy": "Copiar",
+    "download": "Baixar",
+    "noCvVersion": "Nenhuma versão gerada ainda. Clique em \"Gerar versão melhorada\".",
+    "targetAndActions": "Alvo & ações",
+    "targetLabel": "Alvo da análise",
+    "generalQuality": "Qualidade ATS geral",
+    "againstJob": "Contra uma vaga encontrada",
+    "pasteDescription": "Colar descrição de vaga",
+    "selectJob": "selecione a vaga…",
+    "pasteJobPlaceholder": "cole a descrição da vaga…",
+    "evaluate": "Avaliar (nota + relatório)",
+    "generateImproved": "✨ Gerar versão melhorada",
+    "generating": "Gerando…"
+  },
+  "doctor": {
+    "title": "Saúde do ambiente",
+    "hint": "dependências e configuração necessárias para rodar",
+    "ok": "ok",
+    "warnings_one": "{{count}} aviso",
+    "warnings_other": "{{count}} avisos",
+    "errors_one": "{{count}} erro",
+    "errors_other": "{{count}} erros",
+    "refresh": "Re-verificar",
+    "checking": "verificando…",
+    "noResults": "sem resultados"
+  },
+  "config": {
+    "loading": "carregando…",
+    "application": "Candidatura",
+    "modeLabel": "Modo de candidatura",
+    "modeHint": "review = só prepara; autonomous = envia; hybrid = por fit",
+    "hybridLabel": "Limiar híbrido (fit)",
+    "hybridHint": "no modo hybrid, auto-candidata só acima deste fit",
+    "dryRunLabel": "Dry-run (simulação)",
+    "dryRunHint": "busca e avalia, mas NUNCA envia candidatura",
+    "languageFilterLabel": "Filtrar vagas por idioma",
+    "languageFilterHint": "considera apenas vagas no idioma selecionado",
+    "agent": "Agente",
+    "useChrome": "Usar Claude in Chrome",
+    "useChromeHint": "usa o Chrome real logado do usuário",
+    "bypassPermissions": "Pular permissões (autônomo)",
+    "bypassPermissionsHint": "--permission-mode bypassPermissions",
+    "autoRun": "Auto-rodar ao ficar ocioso",
+    "idleThreshold": "Ocioso após (segundos)",
+    "claudeBinary": "Binário do claude",
+    "data": "Dados",
+    "cvPath": "Caminho do CV (upload)",
+    "linkedinUrl": "LinkedIn URL",
+    "save": "Salvar configurações"
+  },
+  "ui": {
+    "live": "LIVE",
+    "off": "OFF"
+  }
+}
