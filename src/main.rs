@@ -53,6 +53,15 @@ async fn async_main() -> Result<()> {
         return selftest_agent().await;
     }
 
+    // Limpa os dados de execução (vagas, candidaturas, pendências, sessões,
+    // feedback) e sai. Preserva perfil, variantes de busca e respostas.
+    if std::env::args().any(|a| a == "--reset-runs") {
+        let db = Db::open(config::db_path()?)?;
+        db.clear_runs()?;
+        println!("execution data cleared (jobs, applications, pending, sessions, feedback)");
+        return Ok(());
+    }
+
     // Headless profile import (CV, LinkedIn, or both combined).
     // Flags without value fall back to configured defaults (settings.json).
     let want_cv = std::env::args().any(|a| a == "--import-cv");
