@@ -161,7 +161,7 @@ fn router(state: AppState) -> Router {
         .route("/api/variants", get(get_variants).post(post_variant))
         .route("/api/profile", get(get_profile).post(post_profile))
         .route("/api/settings", get(get_settings).post(post_settings))
-        .route("/api/answers", get(get_answers))
+        .route("/api/answers", get(get_answers).post(post_answer))
         .route("/api/cv-review", get(get_cv_review))
         .route("/api/cv-version", get(get_cv_version))
         .route("/api/cv-version/download", get(download_cv_version))
@@ -346,6 +346,26 @@ async fn get_answers(State(s): State<AppState>) -> Result<Json<Vec<Answer>>, Api
     let db = s.db.lock().unwrap();
     db.get_answers().map(Json).map_err(internal)
 }
+
+#[derive(Deserialize)]
+struct AnswerBody {
+    key: String,
+    value: String,
+}
+
+/// Grava/atualiza uma resposta do banco diretamente (usado pela página "Dados
+/// pessoais"). Valida que a key é conhecida; caso contrário, 400.
+async fn post_answer(
+    State(s): State<AppState>,
+    Json(body): Json<AnswerBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let label = crate::db::models::answer_label(&body.key)
+        .ok_or((StatusCode::BAD_REQUEST, format!("unknown answer key: {}", body.key)))?;
+    let db = s.db.lock().unwrap();
+    db.set_answer(&body.key, label, &body.value).map_err(internal)?;
+    Ok(ok())
+}
+
 async fn get_cv_review(State(s): State<AppState>) -> Result<Json<Option<CvReview>>, ApiError> {
     let db = s.db.lock().unwrap();
     db.latest_cv_review().map(Json).map_err(internal)
@@ -518,13 +538,13 @@ async fn approve_pending(
 }
 
 #[derive(Deserialize)]
-struct AnswerBody {
+struct PendingAnswerBody {
     value: String,
 }
 async fn answer_pending(
     State(s): State<AppState>,
     Path(id): Path<i64>,
-    Json(body): Json<AnswerBody>,
+    Json(body): Json<PendingAnswerBody>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let db = s.db.lock().unwrap();
     let p = db
@@ -636,4 +656,18 @@ async fn sse_events(
         Some(Ok(Event::default().data(data)))
     });
     Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+// ---- Tests ------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use crate::db::models::answer_label;
+
+    #[test]
+    fn answer_label_known_and_unknown() {
+        assert_eq!(answer_label("cpf"), Some("CPF"));
+        assert_eq!(answer_label("salary_expectation"), Some("Salary expectation"));
+        assert_eq!(answer_label("not_a_real_key"), None);
+    }
 }
