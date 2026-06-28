@@ -255,6 +255,10 @@ pub fn apply_for_job(
                  - If a REQUIRED answer is missing and not in the bank (e.g. salary expectation),\n\
                    do NOT make it up: report `pending kind=\"answer_needed\"` with `field_key` (a short, stable\n\
                    slug, e.g. \"salary_expectation\") and the exact question in `description`. Stop the job.\n\
+                 - Identity data the user provided in the answer bank (CPF, phone, full name,\n\
+                   birth date, city/state) is the user's OWN data for their OWN application —\n\
+                   FILL it into the form whenever present. Only emit `answer_needed` if it is\n\
+                   absent. NEVER invent or guess a document number.\n\
                  - If login is needed and you are not logged in: `pending kind=\"login\"` (describe the platform).\n\
                  - Captcha: `pending kind=\"captcha\"` and skip.\n\
                  - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
@@ -296,6 +300,11 @@ pub fn apply_for_job(
                  - Se faltar uma resposta OBRIGATÓRIA que não está no banco (ex.: pretensão salarial),\n\
                    NÃO invente: reporte `pending kind=\"answer_needed\"` com `field_key` (slug curto e\n\
                    estável, ex.: \"salary_expectation\") e a pergunta exata em `description`. Pare a vaga.\n\
+                 - Dados de identidade que o usuário informou no banco de respostas (CPF, celular,\n\
+                   nome completo, data de nascimento, cidade/estado) são dados do PRÓPRIO usuário\n\
+                   para a PRÓPRIA candidatura — PREENCHA no formulário sempre que presentes. Só\n\
+                   emita `answer_needed` se estiverem ausentes. NUNCA invente/adivinhe um número\n\
+                   de documento.\n\
                  - Se precisar de login e não estiver logado: `pending kind=\"login\"` (descreva a plataforma).\n\
                  - Captcha: `pending kind=\"captcha\"` e pule.\n\
                  - NÃO desista no primeiro obstáculo: role a página, procure o botão certo, avance etapas.\n\
@@ -758,6 +767,10 @@ mod tests {
             "must inject the answer bank"
         );
         assert!(apply.contains("answer_needed"));
+        assert!(
+            apply.contains("CPF"),
+            "must include the identity-data fill policy"
+        );
     }
 
     #[test]
