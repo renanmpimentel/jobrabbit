@@ -257,6 +257,26 @@ pub const ANSWER_FIELDS: &[(&str, &str)] = &[
     ("preferred_city", "Preferred city (if relocating)"),
 ];
 
+/// Brazilian identity fields the user fills in proactively (page "Dados
+/// pessoais"). Seeded into the same `answers` table as the triage fields.
+pub const IDENTITY_FIELDS: &[(&str, &str)] = &[
+    ("cpf", "CPF"),
+    ("phone", "Celular com DDD"),
+    ("full_name", "Nome completo"),
+    ("birth_date", "Data de nascimento"),
+    ("city_state", "Cidade/Estado"),
+];
+
+/// Canonical label for a known answer key (triage or identity), or `None` if the
+/// key is not recognized. Used to validate/label direct answer writes.
+pub fn answer_label(key: &str) -> Option<&'static str> {
+    ANSWER_FIELDS
+        .iter()
+        .chain(IDENTITY_FIELDS.iter())
+        .find(|(k, _)| *k == key)
+        .map(|(_, label)| *label)
+}
+
 /// Maps legacy Portuguese answer keys to the current English keys, for migrating
 /// existing databases. `linkedin_url`/`github_url` keep their keys (unchanged).
 pub const ANSWER_KEY_MIGRATIONS: &[(&str, &str)] = &[
