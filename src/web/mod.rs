@@ -155,6 +155,7 @@ fn router(state: AppState) -> Router {
         // Reads
         .route("/api/stats", get(get_stats))
         .route("/api/jobs", get(get_jobs))
+        .route("/api/jobs/applied", get(get_jobs_applied))
         .route("/api/pending", get(get_pending))
         .route("/api/applications", get(get_applications))
         .route("/api/feedback", get(get_feedback))
@@ -176,6 +177,7 @@ fn router(state: AppState) -> Router {
         .route("/api/cv-review/run", post(post_cv_review))
         .route("/api/cv-improve/run", post(post_cv_improve))
         .route("/api/import", post(post_import))
+        .route("/api/session/continue", post(post_session_continue))
         .route("/api/reset-runs", post(reset_runs))
         .route("/api/variants/:id", delete(delete_variant))
         .route("/api/variants/:id/toggle", post(toggle_variant))
@@ -324,6 +326,11 @@ async fn get_stats(State(s): State<AppState>) -> Result<Json<Stats>, ApiError> {
 async fn get_jobs(State(s): State<AppState>) -> Result<Json<Vec<Job>>, ApiError> {
     let db = s.db.lock().unwrap();
     db.list_jobs_unapplied().map(Json).map_err(internal)
+}
+
+async fn get_jobs_applied(State(s): State<AppState>) -> Result<Json<Vec<Job>>, ApiError> {
+    let db = s.db.lock().unwrap();
+    db.list_jobs_applied().map(Json).map_err(internal)
 }
 async fn get_pending(State(s): State<AppState>) -> Result<Json<Vec<PendingAction>>, ApiError> {
     let db = s.db.lock().unwrap();
@@ -686,6 +693,11 @@ struct ImportBody {
     cv_path: Option<String>,
     linkedin_url: Option<String>,
 }
+
+#[derive(Deserialize)]
+struct ContinueBody {
+    message: Option<String>,
+}
 async fn post_import(
     State(s): State<AppState>,
     Json(body): Json<ImportBody>,
@@ -712,6 +724,51 @@ async fn post_import(
         ));
     };
     spawn_one(&s, prompt, msg).map_err(|e| (StatusCode::CONFLICT, e))?;
+    Ok(ok())
+}
+
+async fn post_session_continue(
+    State(s): State<AppState>,
+    Json(body): Json<ContinueBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    // Check if agent is already running
+    if matches!(*s.agent_status.lock().unwrap(), AgentStatus::Running) {
+        return Err((
+            StatusCode::CONFLICT,
+            "agent is already running".into(),
+        ));
+    }
+
+    // Get the latest session ID
+    let resume_sid = {
+        let db = s.db.lock().unwrap();
+        db.latest_claude_session_id()
+            .map_err(internal)?
+            .ok_or((
+                StatusCode::BAD_REQUEST,
+                "no previous session to resume".into(),
+            ))?
+    };
+
+    // Build the prompt
+    let settings = s.settings.lock().unwrap().clone();
+    let prompt = crate::agent::prompts::continue_session(
+        body.message.as_deref().unwrap_or("").trim(),
+        settings.locale,
+    );
+
+    // Preflight Claude
+    preflight_claude(&settings).map_err(|e| (StatusCode::CONFLICT, e))?;
+
+    // Spawn the resume session
+    actions::spawn_resume(
+        actions::agent_config(&settings),
+        prompt,
+        resume_sid,
+        "continuation after manual action".into(),
+        s.agent_tx.clone(),
+    );
+
     Ok(ok())
 }
 

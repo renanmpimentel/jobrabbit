@@ -277,6 +277,23 @@ impl Db {
         Ok(rows)
     }
 
+    /// Jobs that have an `applied` application.
+    pub fn list_jobs_applied(&self) -> Result<Vec<Job>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, company, url, source, description, fit_score, found_at
+             FROM jobs j
+             WHERE EXISTS (
+                 SELECT 1 FROM applications a
+                 WHERE a.job_id = j.id AND a.status = 'applied'
+             )
+             ORDER BY found_at DESC",
+        )?;
+        let rows = stmt
+            .query_map([], Job::from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
     // ---- Applications -----------------------------------------------------
 
     pub fn add_application(
@@ -399,6 +416,19 @@ impl Db {
             .query_map([], Session::from_row)?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
+    }
+
+    /// Gets the most recent Claude session ID (for resuming a continuation).
+    pub fn latest_claude_session_id(&self) -> Result<Option<String>> {
+        let sid = self
+            .conn
+            .query_row(
+                "SELECT claude_session_id FROM sessions WHERE claude_session_id IS NOT NULL ORDER BY started_at DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        Ok(sid)
     }
 
     // ---- Pending actions --------------------------------------------------
@@ -771,6 +801,38 @@ mod tests {
     }
 
     #[test]
+    fn latest_claude_session_id() {
+        let db = Db::open_in_memory().unwrap();
+
+        // No sessions yet
+        assert_eq!(db.latest_claude_session_id().unwrap(), None);
+
+        // Create a session without a claude_session_id (None)
+        db.start_session(None).unwrap();
+
+        // Still None (session exists but has no claude_session_id)
+        assert_eq!(db.latest_claude_session_id().unwrap(), None);
+
+        // Create a session with a claude_session_id
+        db.start_session(Some("sess-1")).unwrap();
+
+        // Now returns that session ID
+        assert_eq!(
+            db.latest_claude_session_id().unwrap(),
+            Some("sess-1".to_string())
+        );
+
+        // Create another one with a different ID
+        db.start_session(Some("sess-2")).unwrap();
+
+        // Returns the most recent one
+        assert_eq!(
+            db.latest_claude_session_id().unwrap(),
+            Some("sess-2".to_string())
+        );
+    }
+
+    #[test]
     fn identity_fields_are_seeded() {
         let db = Db::open_in_memory().unwrap();
         let answers = db.get_answers().unwrap();
@@ -869,6 +931,49 @@ mod tests {
         assert_eq!(unapplied.len(), 1);
         assert_eq!(unapplied[0].id, job2);
         assert_eq!(unapplied[0].title, "Rust Engineer");
+    }
+
+    #[test]
+    fn list_jobs_applied_returns_only_applied() {
+        let db = Db::open_in_memory().unwrap();
+
+        // Create two jobs
+        let job1 = db
+            .upsert_job(&NewJob {
+                title: "Senior Dev".into(),
+                url: "https://jobs.example/1".into(),
+                company: "Company A".into(),
+                source: "LinkedIn".into(),
+                description: "Great opportunity".into(),
+                fit_score: Some(0.85),
+            })
+            .unwrap();
+
+        let job2 = db
+            .upsert_job(&NewJob {
+                title: "Rust Engineer".into(),
+                url: "https://jobs.example/2".into(),
+                company: "Company B".into(),
+                source: "GitHub".into(),
+                description: "Exciting project".into(),
+                fit_score: Some(0.92),
+            })
+            .unwrap();
+
+        // Mark job1 as applied
+        db.add_application(job1, "applied", None, None)
+            .unwrap();
+
+        // Verify list_jobs_applied returns only job1
+        let applied = db.list_jobs_applied().unwrap();
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].id, job1);
+        assert_eq!(applied[0].title, "Senior Dev");
+
+        // Verify list_jobs_unapplied returns only job2
+        let unapplied = db.list_jobs_unapplied().unwrap();
+        assert_eq!(unapplied.len(), 1);
+        assert_eq!(unapplied[0].id, job2);
     }
 
     #[test]

@@ -840,6 +840,60 @@ pub fn build_profile_from_linkedin(url: &str, locale: Locale) -> String {
     }
 }
 
+/// Prompt to resume a previous Claude session after the user has manually handled a blocker.
+///
+/// The agent continues from where it stopped, following the same NDJSON protocol
+/// (job/application/pending lines).
+pub fn continue_session(user_msg: &str, locale: Locale) -> String {
+    let user_instruction = if user_msg.is_empty() {
+        String::new()
+    } else {
+        match locale {
+            Locale::En => format!("Additional instruction from the user: {user_msg}\n\n"),
+            Locale::PtBr => format!("Instrução adicional do usuário: {user_msg}\n\n"),
+        }
+    };
+
+    match locale {
+        Locale::En => {
+            format!(
+                "You are the jobRabbit agent resuming a session after manual action.\n\n\
+                 The user has manually handled a blocker (captcha, login, required field, etc.)\n\
+                 or completed a step that requires human intervention. Your mission is to\n\
+                 RESUME from where you stopped and continue the EXACT SAME application/search flow.\n\n\
+                 {user_instruction}\
+                 ## Protocol (REQUIRED)\n\
+                 Continue emitting NDJSON (one JSON line per event), with types:\n\
+                 - Job found/evaluated: {{\"type\":\"job\",...}}\n\
+                 - Application: {{\"type\":\"application\",...}}\n\
+                 - Pending: {{\"type\":\"pending\",...}}\n\
+                 - Answer discovered: {{\"type\":\"answer\",...}}\n\n\
+                 Use the **Claude in Chrome** integration (REAL logged-in Chrome, NOT Playwright).\n\
+                 Remember: do not emit duplicate lines for work already completed in the previous session.\n\
+                 Pick up exactly where the session ended."
+            )
+        }
+        Locale::PtBr => {
+            format!(
+                "Você é o agente do jobRabbit retomando uma sessão após ação manual.\n\n\
+                 O usuário resolveu manualmente um bloqueio (captcha, login, campo obrigatório, etc.)\n\
+                 ou completou uma etapa que exige intervenção humana. Sua missão é\n\
+                 RETOMAR de onde parou e continuar o MESMO fluxo de candidatura/busca.\n\n\
+                 {user_instruction}\
+                 ## Protocolo (OBRIGATÓRIO)\n\
+                 Continue emitindo NDJSON (uma linha JSON por evento), com tipos:\n\
+                 - Vaga encontrada/avaliada: {{\"type\":\"job\",...}}\n\
+                 - Candidatura: {{\"type\":\"application\",...}}\n\
+                 - Pendência: {{\"type\":\"pending\",...}}\n\
+                 - Resposta descoberta: {{\"type\":\"answer\",...}}\n\n\
+                 Use a integração **Claude in Chrome** (Chrome REAL logado, NÃO Playwright).\n\
+                 Lembre-se: não emita linhas duplicadas de trabalho já concluído na sessão anterior.\n\
+                 Continue exatamente de onde a sessão parou."
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1136,5 +1190,38 @@ mod tests {
         assert!(pt_prompt.contains("https://example.com/job/456"));
         assert!(pt_prompt.to_lowercase().contains("idioma"));
         assert!(pt_prompt.contains("dry_run"));
+    }
+
+    #[test]
+    fn continue_session_includes_user_msg() {
+        // Test English locale without user message
+        let en_prompt = continue_session("", Locale::En);
+        assert!(
+            en_prompt.to_lowercase().contains("resume"),
+            "must mention resume/continue"
+        );
+        assert!(
+            en_prompt.to_lowercase().contains("ndjson"),
+            "must mention NDJSON protocol"
+        );
+        assert!(en_prompt.contains("Claude in Chrome"));
+
+        // Test English locale with user message
+        let en_with_msg = continue_session("type X carefully", Locale::En);
+        assert!(en_with_msg.contains("type X carefully"));
+        assert!(en_with_msg.contains("Additional instruction from the user"));
+
+        // Test Portuguese locale with message
+        let pt_with_msg = continue_session("faça Y com cuidado", Locale::PtBr);
+        assert!(pt_with_msg.contains("faça Y com cuidado"));
+        assert!(pt_with_msg.contains("Instrução adicional do usuário"));
+        assert!(
+            pt_with_msg.to_lowercase().contains("retom"),
+            "Portuguese version should mention 'retomar' (resume)"
+        );
+
+        // Test empty message in Portuguese
+        let pt_prompt = continue_session("", Locale::PtBr);
+        assert!(!pt_prompt.contains("Instrução adicional do usuário:"));
     }
 }
