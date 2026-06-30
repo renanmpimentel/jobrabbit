@@ -174,6 +174,7 @@ fn router(state: AppState) -> Router {
         .route("/api/cv-review/run", post(post_cv_review))
         .route("/api/cv-improve/run", post(post_cv_improve))
         .route("/api/import", post(post_import))
+        .route("/api/reset-runs", post(reset_runs))
         .route("/api/variants/:id", delete(delete_variant))
         .route("/api/variants/:id/toggle", post(toggle_variant))
         .route("/api/pending/:id/resolve", post(resolve_pending))
@@ -491,6 +492,15 @@ async fn delete_variant(
     db.delete_variant(id).map_err(internal)?;
     Ok(ok())
 }
+
+/// Apaga os dados de execução (jobs, applications, pending, sessions, feedback),
+/// permitindo recomeçar uma busca do zero. Preserva perfil, variantes e respostas.
+async fn reset_runs(State(s): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
+    let db = s.db.lock().unwrap();
+    db.clear_runs().map_err(internal)?;
+    Ok(ok())
+}
+
 async fn toggle_variant(
     State(s): State<AppState>,
     Path(id): Path<i64>,

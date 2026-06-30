@@ -192,6 +192,23 @@ impl Db {
         Ok(())
     }
 
+    /// Apaga os dados de execução (vagas, candidaturas, pendências, sessões e
+    /// feedback), numa transação atômica. Preserva perfil, variantes de busca,
+    /// respostas de triagem e dados de currículo (cv_reviews/cv_versions).
+    /// Permite recomeçar uma busca do zero. Idempotente.
+    pub fn clear_runs(&self) -> Result<()> {
+        self.conn.execute_batch(
+            "BEGIN;
+             DELETE FROM applications;
+             DELETE FROM pending_actions;
+             DELETE FROM sessions;
+             DELETE FROM feedback;
+             DELETE FROM jobs;
+             COMMIT;",
+        )?;
+        Ok(())
+    }
+
     // ---- Jobs -------------------------------------------------------------
 
     /// Inserts a job or updates by unique URL. Returns the id.
@@ -726,5 +743,51 @@ mod tests {
                 .unwrap_or_else(|| panic!("identity field {key} not seeded"));
             assert_eq!(a.value, "", "{key} should start empty");
         }
+    }
+
+    #[test]
+    fn clear_runs_wipes_execution_data_only() {
+        let db = Db::open_in_memory().unwrap();
+
+        // Dados que DEVEM ser preservados.
+        db.save_profile("bg", "cv").unwrap();
+        db.add_variant("Senior Remote", "senior rust remote").unwrap();
+        db.set_answer("english_level", "English level", "advanced").unwrap();
+        db.add_cv_review(82, "EM", "report").unwrap();
+
+        // Dados de execução que DEVEM ser apagados.
+        let job = db
+            .upsert_job(&NewJob {
+                title: "Rust Eng".into(),
+                url: "https://acme.jobs/1".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        db.add_application(job, "applied", None, None).unwrap();
+        db.add_pending(Some(job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
+        db.start_session(Some("sess-1")).unwrap();
+        db.add_feedback("summary", "suggestions").unwrap();
+
+        db.clear_runs().unwrap();
+
+        // Execução: tudo vazio.
+        assert!(db.list_jobs().unwrap().is_empty());
+        assert!(db.list_applications().unwrap().is_empty());
+        assert!(db.list_pending(true).unwrap().is_empty());
+        assert!(db.list_sessions().unwrap().is_empty());
+        assert!(db.list_feedback().unwrap().is_empty());
+
+        // Preservado: intacto.
+        assert_eq!(db.get_profile().unwrap().background, "bg");
+        assert_eq!(db.list_variants().unwrap().len(), 1);
+        // Answers are seeded with all canonical fields; set_answer updates one
+        // of them in place (english_level), so the seeded set is preserved intact.
+        let answers = db.get_answers().unwrap();
+        assert!(answers.len() > 1);
+        assert!(answers.iter().any(|a| a.key == "english_level" && a.value == "advanced"));
+        assert!(db.latest_cv_review().unwrap().is_some());
+
+        // Idempotente: rodar de novo num banco já limpo não falha.
+        db.clear_runs().unwrap();
     }
 }
