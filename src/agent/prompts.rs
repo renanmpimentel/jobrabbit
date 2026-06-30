@@ -671,13 +671,13 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  ## Original résumé\n{cv_text}\n\n\
                  ## Output (REQUIRED) — TWO JSON lines (NDJSON), no text outside them, no fences:\n\
                  First, emit the improved CV:\n\
-                 {{\"type\":\"cv_version\",\"target\":\"<target summary or 'general'>\",\
+                 {{\"type\":\"cv_improved\",\"target\":\"<target summary or 'general'>\",\
                  \"content\":\"<full improved résumé in MARKDOWN>\"}}\n\
                  Then, emit your final self-assessment as a cv_review:\n\
                  {{\"type\":\"cv_review\",\"score\":<your assessed score ≥90>,\"target\":\"<same as above>\",\
                  \"report\":\"markdown: ## Score, ## Strengths, ## What was improved (bullets)\"}}\n\
                  In both `content` and `report`, use \\n for line breaks. Deliver the entire CV in the \n\
-                 cv_version content, and explain your self-assessment logic in the review.",
+                 cv_improved content, and explain your self-assessment logic in the review.",
             )
         }
         Locale::PtBr => {
@@ -715,13 +715,13 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  ## Currículo original\n{cv_text}\n\n\
                  ## Saída (OBRIGATÓRIO) — DUAS linhas JSON (NDJSON), sem texto fora delas, sem cercas:\n\
                  Primeiro, emita o CV melhorado:\n\
-                 {{\"type\":\"cv_version\",\"target\":\"<resumo do alvo ou 'geral'>\",\
+                 {{\"type\":\"cv_improved\",\"target\":\"<resumo do alvo ou 'geral'>\",\
                  \"content\":\"<currículo melhorado completo em MARKDOWN>\"}}\n\
                  Depois, emita sua auto-avaliação final como cv_review:\n\
                  {{\"type\":\"cv_review\",\"score\":<sua nota avaliada ≥90>,\"target\":\"<mesmo que acima>\",\
                  \"report\":\"markdown: ## Nota, ## Pontos fortes, ## O que foi melhorado (bullets)\"}}\n\
                  Em `content` e `report`, use \\n para quebras de linha. Entregue o CV inteiro no \n\
-                 cv_version content, e explique sua lógica de auto-avaliação na review.",
+                 cv_improved content, e explique sua lógica de auto-avaliação na review.",
             )
         }
     }
@@ -1000,14 +1000,14 @@ mod tests {
     #[test]
     fn improve_cv_iterates_to_90() {
         let en_prompt = improve_cv("my cv", Some("Senior Backend"), Locale::En);
-        assert!(en_prompt.contains("cv_version"), "must emit cv_version");
+        assert!(en_prompt.contains("cv_improved"), "must emit cv_improved");
         assert!(en_prompt.contains("cv_review"), "must emit cv_review after iteration");
         assert!(en_prompt.contains("90"), "must target 90 score in iteration");
         assert!(en_prompt.contains("iterate") || en_prompt.contains("pass"),
                 "must mention iteration/passes for self-evaluation");
 
         let pt_prompt = improve_cv("meu cv", Some("Gerente Sênior"), Locale::PtBr);
-        assert!(pt_prompt.contains("cv_version"));
+        assert!(pt_prompt.contains("cv_improved"));
         assert!(pt_prompt.contains("cv_review"));
         assert!(pt_prompt.contains("90"), "PT improve_cv must target 90 score");
     }
