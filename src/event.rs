@@ -35,6 +35,7 @@ pub enum AppEvent {
         status: String,
         cv: Option<String>,
         cover: Option<String>,
+        screenshot: Option<String>,
     },
     /// The agent reported a pending action (captcha/field/login/answer_needed).
     AgentPending {
@@ -98,11 +99,13 @@ impl AppEvent {
                 status,
                 cv,
                 cover,
+                screenshot,
             } => AppEvent::AgentApplication {
                 url,
                 status,
                 cv,
                 cover,
+                screenshot,
             },
             AgentOutput::Pending {
                 url,

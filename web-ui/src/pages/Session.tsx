@@ -32,6 +32,14 @@ export default function Session() {
     if (follow && boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
   }, [lines, follow]);
 
+  // Follow tracks whether the user is at the bottom: scrolling up pauses
+  // auto-scroll, scrolling back to the bottom resumes it.
+  const onScroll = () => {
+    const el = boxRef.current;
+    if (!el) return;
+    setFollow(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardHeader
@@ -60,7 +68,7 @@ export default function Session() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-neon/[0.04] to-transparent" />
         <div
           ref={boxRef}
-          onWheel={() => setFollow(false)}
+          onScroll={onScroll}
           className="scroll-thin relative h-[62vh] overflow-auto bg-ink-900/40 px-5 py-4 font-mono text-xs leading-relaxed"
         >
           {lines.length === 0 ? (

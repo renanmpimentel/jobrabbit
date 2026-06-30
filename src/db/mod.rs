@@ -38,6 +38,7 @@ impl Db {
         conn.execute_batch(SCHEMA).context("apply schema")?;
         // Light migration for old DBs (ignores if column already exists).
         let _ = conn.execute("ALTER TABLE pending_actions ADD COLUMN field_key TEXT", []);
+        let _ = conn.execute("ALTER TABLE applications ADD COLUMN screenshot_path TEXT", []);
         let db = Self { conn };
         db.migrate_answer_keys()?;
         db.seed_answers()?;
@@ -258,6 +259,24 @@ impl Db {
         Ok(rows)
     }
 
+    /// Jobs that don't yet have an `applied` application — used by the web jobs
+    /// list so already-applied vacancies disappear from view.
+    pub fn list_jobs_unapplied(&self) -> Result<Vec<Job>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, company, url, source, description, fit_score, found_at
+             FROM jobs j
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM applications a
+                 WHERE a.job_id = j.id AND a.status = 'applied'
+             )
+             ORDER BY found_at DESC",
+        )?;
+        let rows = stmt
+            .query_map([], Job::from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
     // ---- Applications -----------------------------------------------------
 
     pub fn add_application(
@@ -278,7 +297,7 @@ impl Db {
     /// Current application for a job (if any).
     pub fn application_for_job(&self, job_id: i64) -> Result<Option<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
              FROM applications WHERE job_id = ?1 ORDER BY id DESC LIMIT 1",
         )?;
         let app = stmt.query_row(params![job_id], Application::from_row).ok();
@@ -295,6 +314,25 @@ impl Db {
         Ok(())
     }
 
+    /// Updates the screenshot_path of the most recent application for a job.
+    pub fn set_application_screenshot(&self, job_id: i64, path: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE applications SET screenshot_path = ?1
+             WHERE id = (SELECT id FROM applications WHERE job_id = ?2 ORDER BY id DESC LIMIT 1)",
+            params![path, job_id],
+        )?;
+        Ok(())
+    }
+
+    /// Application by id.
+    pub fn get_application(&self, id: i64) -> Result<Option<Application>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+             FROM applications WHERE id = ?1",
+        )?;
+        Ok(stmt.query_row(params![id], Application::from_row).ok())
+    }
+
     /// Job by id.
     pub fn get_job(&self, id: i64) -> Result<Option<Job>> {
         let mut stmt = self.conn.prepare(
@@ -306,7 +344,7 @@ impl Db {
 
     pub fn list_applications(&self) -> Result<Vec<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
              FROM applications ORDER BY created_at DESC",
         )?;
         let rows = stmt
@@ -789,5 +827,73 @@ mod tests {
 
         // Idempotente: rodar de novo num banco já limpo não falha.
         db.clear_runs().unwrap();
+    }
+
+    #[test]
+    fn list_jobs_unapplied_excludes_applied_jobs() {
+        let db = Db::open_in_memory().unwrap();
+
+        // Create two jobs
+        let job1 = db
+            .upsert_job(&NewJob {
+                title: "Senior Dev".into(),
+                url: "https://jobs.example/1".into(),
+                company: "Company A".into(),
+                source: "LinkedIn".into(),
+                description: "Great opportunity".into(),
+                fit_score: Some(0.85),
+            })
+            .unwrap();
+
+        let job2 = db
+            .upsert_job(&NewJob {
+                title: "Rust Engineer".into(),
+                url: "https://jobs.example/2".into(),
+                company: "Company B".into(),
+                source: "GitHub".into(),
+                description: "Exciting project".into(),
+                fit_score: Some(0.92),
+            })
+            .unwrap();
+
+        // Mark job1 as applied
+        db.add_application(job1, "applied", None, None)
+            .unwrap();
+
+        // Verify list_jobs still returns both jobs
+        let all_jobs = db.list_jobs().unwrap();
+        assert_eq!(all_jobs.len(), 2);
+
+        // Verify list_jobs_unapplied returns only job2 (the non-applied one)
+        let unapplied = db.list_jobs_unapplied().unwrap();
+        assert_eq!(unapplied.len(), 1);
+        assert_eq!(unapplied[0].id, job2);
+        assert_eq!(unapplied[0].title, "Rust Engineer");
+    }
+
+    #[test]
+    fn application_screenshot_path() {
+        let db = Db::open_in_memory().unwrap();
+        let job_id = db
+            .upsert_job(&NewJob {
+                title: "Dev".into(),
+                url: "https://x/3".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        db.add_application(job_id, "applied", None, None)
+            .unwrap();
+
+        // Set screenshot path on the most recent application
+        db.set_application_screenshot(job_id, "/tmp/screenshot.png")
+            .unwrap();
+
+        // Verify application_for_job returns it
+        let app = db.application_for_job(job_id).unwrap().unwrap();
+        assert_eq!(app.screenshot_path.as_deref(), Some("/tmp/screenshot.png"));
+
+        // Verify get_application also returns it
+        let app2 = db.get_application(app.id).unwrap().unwrap();
+        assert_eq!(app2.screenshot_path.as_deref(), Some("/tmp/screenshot.png"));
     }
 }

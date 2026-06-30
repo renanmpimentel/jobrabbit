@@ -5,6 +5,7 @@
     "pending": "Pendências",
     "session": "Sessão",
     "ats": "ATS",
+    "applications": "Candidaturas",
     "feedback": "Feedback",
     "doctor": "Saúde",
     "config": "Config"
@@ -165,5 +166,26 @@
   "ui": {
     "live": "LIVE",
     "off": "OFF"
+  },
+  "applications": {
+    "title": "Candidatar por URL",
+    "totalLabel": "Total de candidaturas",
+    "appliedLabel": "Aplicadas",
+    "urlPlaceholder": "Cole a URL da vaga e pressione Enter ou clique em Candidatar",
+    "applyButton": "Candidatar",
+    "applying": "Candidatando…",
+    "hint": "Cole a URL de uma vaga. O agente abrirá, detectará o idioma, gerará seu CV e carta de apresentação nesse idioma e candidatará diretamente.",
+    "listTitle": "Candidaturas",
+    "viewProof": "Ver comprovante",
+    "empty": "Nenhuma candidatura ainda. Cole uma URL acima e clique em Candidatar.",
+    "jobNotFound": "(detalhes da vaga não encontrados)",
+    "status": {
+      "applied": "Candidatada",
+      "dry_run": "Simulada",
+      "ready": "Pronta",
+      "pending": "Pendente",
+      "failed": "Falhou",
+      "skipped": "Pulada"
+    }
   }
 }

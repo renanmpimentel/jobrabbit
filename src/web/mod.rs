@@ -165,11 +165,13 @@ fn router(state: AppState) -> Router {
         .route("/api/cv-review", get(get_cv_review))
         .route("/api/cv-version", get(get_cv_version))
         .route("/api/cv-version/download", get(download_cv_version))
+        .route("/api/screenshot/:id", get(get_screenshot))
         .route("/api/status", get(get_status))
         .route("/api/log", get(get_log))
         .route("/api/doctor", get(get_doctor))
         // Commands
         .route("/api/run", post(post_run))
+        .route("/api/apply-url", post(post_apply_url))
         .route("/api/feedback/run", post(post_feedback_run))
         .route("/api/cv-review/run", post(post_cv_review))
         .route("/api/cv-improve/run", post(post_cv_improve))
@@ -321,7 +323,7 @@ async fn get_stats(State(s): State<AppState>) -> Result<Json<Stats>, ApiError> {
 }
 async fn get_jobs(State(s): State<AppState>) -> Result<Json<Vec<Job>>, ApiError> {
     let db = s.db.lock().unwrap();
-    db.list_jobs().map(Json).map_err(internal)
+    db.list_jobs_unapplied().map(Json).map_err(internal)
 }
 async fn get_pending(State(s): State<AppState>) -> Result<Json<Vec<PendingAction>>, ApiError> {
     let db = s.db.lock().unwrap();
@@ -425,6 +427,40 @@ async fn download_cv_version(
     )
         .into_response()
 }
+
+/// Serves a screenshot PNG by application ID.
+async fn get_screenshot(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Response {
+    let path = {
+        let db = s.db.lock().unwrap();
+        match db.get_application(id).ok().flatten() {
+            Some(app) => match &app.screenshot_path {
+                Some(p) if !p.is_empty() => p.clone(),
+                _ => return (StatusCode::NOT_FOUND, "no screenshot for this application").into_response(),
+            },
+            None => return (StatusCode::NOT_FOUND, "application not found").into_response(),
+        }
+    };
+
+    match std::fs::read(&path) {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, "image/png"),
+                (header::CACHE_CONTROL, "max-age=86400"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            format!("screenshot file not found: {path}"),
+        )
+            .into_response(),
+    }
+}
+
 async fn get_settings(State(s): State<AppState>) -> Json<Settings> {
     Json(s.settings.lock().unwrap().clone())
 }
@@ -444,6 +480,34 @@ async fn get_doctor(State(s): State<AppState>) -> Json<Vec<crate::core::doctor::
 
 async fn post_run(State(s): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
     start_search(&s).map_err(|e| (StatusCode::CONFLICT, e))?;
+    Ok(ok())
+}
+
+#[derive(Deserialize)]
+struct ApplyUrlBody {
+    url: String,
+}
+async fn post_apply_url(
+    State(s): State<AppState>,
+    Json(body): Json<ApplyUrlBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let url = body.url.trim();
+    if url.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "url required".into()));
+    }
+    let (prompt, settings) = {
+        let db = s.db.lock().unwrap();
+        let settings = s.settings.lock().unwrap().clone();
+        let prompt = actions::apply_by_url_prompt(url, &db, &settings).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to build prompt: {e}"),
+            )
+        })?;
+        (prompt, settings)
+    };
+    drop(settings); // release lock before spawning
+    spawn_one(&s, prompt, "single-job application").map_err(|e| (StatusCode::CONFLICT, e))?;
     Ok(ok())
 }
 

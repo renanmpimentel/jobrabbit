@@ -12,6 +12,7 @@ import {
   Stethoscope,
   Play,
   Loader2,
+  Send,
 } from "lucide-react";
 import { AgentProvider, useAgent } from "./events";
 import { NavProvider } from "./nav";
@@ -23,6 +24,7 @@ import Pending from "./pages/Pending";
 import Session from "./pages/Session";
 import FeedbackPage from "./pages/Feedback";
 import Ats from "./pages/Ats";
+import Applications from "./pages/Applications";
 import Config from "./pages/Config";
 import Doctor from "./pages/Doctor";
 
@@ -32,6 +34,7 @@ const TABS = [
   { id: "pending", labelKey: "nav.pending", icon: AlertTriangle, el: <Pending /> },
   { id: "session", labelKey: "nav.session", icon: Terminal, el: <Session /> },
   { id: "ats", labelKey: "nav.ats", icon: FileCheck2, el: <Ats /> },
+  { id: "applications", labelKey: "nav.applications", icon: Send, el: <Applications /> },
   { id: "feedback", labelKey: "nav.feedback", icon: TrendingUp, el: <FeedbackPage /> },
   { id: "doctor", labelKey: "nav.doctor", icon: Stethoscope, el: <Doctor /> },
   { id: "config", labelKey: "nav.config", icon: SettingsIcon, el: <Config /> },

@@ -95,6 +95,23 @@ pub fn approval_prompt(
     ))
 }
 
+/// Prompt for apply-by-URL flow: extract job details from URL, detect language,
+/// generate CV/cover in that language, evaluate fit, and apply (or simulate).
+pub fn apply_by_url_prompt(
+    url: &str,
+    db: &Db,
+    settings: &Settings,
+) -> Result<String, String> {
+    let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    Ok(prompts::apply_by_url(
+        url,
+        &settings.cv_file_path,
+        &answers,
+        settings.dry_run,
+        settings.locale,
+    ))
+}
+
 /// Base CV text for ATS evaluation: file (if any) otherwise `cv_base`.
 pub fn cv_source_text(db: &Db, settings: &Settings) -> String {
     let path = settings.cv_file_path.trim();
