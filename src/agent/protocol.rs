@@ -19,6 +19,7 @@ pub enum AgentOutput {
         status: String,
         cv: Option<String>,
         cover: Option<String>,
+        screenshot: Option<String>,
     },
     Pending {
         url: Option<String>,
@@ -108,6 +109,7 @@ pub fn parse(line: &str) -> Option<AgentOutput> {
                 },
                 cv: opt_str(&v, "cv"),
                 cover: opt_str(&v, "cover"),
+                screenshot: opt_str(&v, "screenshot"),
             })
         }
         "pending" => {
@@ -230,11 +232,27 @@ mod tests {
         let l = r#"{"type":"application","url":"https://x/1","cv":"my cv"}"#;
         match parse(l).unwrap() {
             AgentOutput::Application {
-                url, status, cv, ..
+                url, status, cv, screenshot, ..
             } => {
                 assert_eq!(url, "https://x/1");
                 assert_eq!(status, "applied");
                 assert_eq!(cv.as_deref(), Some("my cv"));
+                assert!(screenshot.is_none());
+            }
+            other => panic!("expected Application, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_application_with_screenshot() {
+        let l = r#"{"type":"application","url":"https://x/1","status":"applied","screenshot":"/tmp/screenshot.png"}"#;
+        match parse(l).unwrap() {
+            AgentOutput::Application {
+                url, status, screenshot, ..
+            } => {
+                assert_eq!(url, "https://x/1");
+                assert_eq!(status, "applied");
+                assert_eq!(screenshot.as_deref(), Some("/tmp/screenshot.png"));
             }
             other => panic!("expected Application, got {other:?}"),
         }

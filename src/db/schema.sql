@@ -31,12 +31,13 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 -- Candidaturas (uma vaga pode gerar uma candidatura).
 CREATE TABLE IF NOT EXISTS applications (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id       INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-    status       TEXT NOT NULL DEFAULT 'pending', -- pending|applied|skipped|failed
-    cv_generated TEXT,
-    cover_letter TEXT,
-    created_at   TEXT NOT NULL
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id          INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    status          TEXT NOT NULL DEFAULT 'pending', -- pending|applied|skipped|failed
+    cv_generated    TEXT,
+    cover_letter    TEXT,
+    screenshot_path TEXT,
+    created_at      TEXT NOT NULL
 );
 
 -- Sessões do agente (mapeia para sessões do `claude`).

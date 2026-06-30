@@ -77,6 +77,7 @@ pub fn apply_event(db: &Db, ev: &AppEvent, session_id: &mut Option<i64>) -> Even
             status,
             cv,
             cover,
+            screenshot,
         } => {
             if let Ok(Some(job_id)) = db.job_id_by_url(url) {
                 // Does an application exist? Update status (preserve CV/letter); otherwise insert.
@@ -86,6 +87,12 @@ pub fn apply_event(db: &Db, ev: &AppEvent, session_id: &mut Option<i64>) -> Even
                     }
                     _ => {
                         let _ = db.add_application(job_id, status, cv.as_deref(), cover.as_deref());
+                    }
+                }
+                // If screenshot path is provided, store it.
+                if let Some(shot) = screenshot {
+                    if !shot.trim().is_empty() {
+                        let _ = db.set_application_screenshot(job_id, shot);
                     }
                 }
                 // Review mode: 'ready' becomes an approval item in the Pending tab.

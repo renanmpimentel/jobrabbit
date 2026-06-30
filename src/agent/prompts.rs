@@ -262,11 +262,16 @@ pub fn apply_for_job(
                  - If login is needed and you are not logged in: `pending kind=\"login\"` (describe the platform).\n\
                  - Captcha: `pending kind=\"captcha\"` and skip.\n\
                  - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
-                 - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\n\
+                 - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\
+                 - After seeing the explicit submission confirmation, capture a screenshot via Claude in Chrome,\n\
+                   save it as a PNG file, and include its absolute path in the `screenshot` field of the\n\
+                   application JSON. BEST-EFFORT: if the screenshot cannot be captured, still report `applied`\n\
+                   WITHOUT the screenshot field.\n\n\
                  ### Job\n- Role: {job_title}\n- Company: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Cover letter\n{cover}\n\n\
                  ## Output (REQUIRED) — ONE JSON line per event, no text outside it:\n\
-                 - Sent and CONFIRMED: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"description\":\"confirmation seen\"}}\n\
+                 - Sent and CONFIRMED: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
+                 - With screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/absolute/path/to/screenshot.png\"}}\n\
                  - Missing answer: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"What is your salary expectation?\"}}\n\
                  - Blocker: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"what's missing\"}}\n\
                  - Not completed for another reason: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"failed\",\"description\":\"why\"}}\n\
@@ -308,11 +313,16 @@ pub fn apply_for_job(
                  - Se precisar de login e não estiver logado: `pending kind=\"login\"` (descreva a plataforma).\n\
                  - Captcha: `pending kind=\"captcha\"` e pule.\n\
                  - NÃO desista no primeiro obstáculo: role a página, procure o botão certo, avance etapas.\n\
-                 - Só reporte `applied` ao ver uma CONFIRMAÇÃO explícita (\"Candidatura enviada\"/\"submitted\").\n\n\
+                 - Só reporte `applied` ao ver uma CONFIRMAÇÃO explícita (\"Candidatura enviada\"/\"submitted\").\n\
+                 - Após ver a confirmação explícita de envio, capture uma screenshot via Claude in Chrome,\n\
+                   salve como arquivo PNG, e inclua seu caminho absoluto no campo `screenshot` do JSON\n\
+                   de candidatura. BEST-EFFORT: se a screenshot não puder ser capturada, ainda reporte `applied`\n\
+                   SEM o campo screenshot.\n\n\
                  ### Vaga\n- Cargo: {job_title}\n- Empresa: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Carta de apresentação\n{cover}\n\n\
                  ## Saída (OBRIGATÓRIO) — UMA linha JSON por evento, sem texto fora dela:\n\
-                 - Enviada e CONFIRMADA: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"description\":\"confirmação vista\"}}\n\
+                 - Enviada e CONFIRMADA: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
+                 - Com screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/caminho/absoluto/screenshot.png\"}}\n\
                  - Falta resposta: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"Qual sua pretensão salarial?\"}}\n\
                  - Bloqueio: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"o que falta\"}}\n\
                  - Não concluída por outro motivo: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"failed\",\"description\":\"por quê\"}}\n\

@@ -165,6 +165,7 @@ fn router(state: AppState) -> Router {
         .route("/api/cv-review", get(get_cv_review))
         .route("/api/cv-version", get(get_cv_version))
         .route("/api/cv-version/download", get(download_cv_version))
+        .route("/api/screenshot/:id", get(get_screenshot))
         .route("/api/status", get(get_status))
         .route("/api/log", get(get_log))
         .route("/api/doctor", get(get_doctor))
@@ -425,6 +426,40 @@ async fn download_cv_version(
     )
         .into_response()
 }
+
+/// Serves a screenshot PNG by application ID.
+async fn get_screenshot(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Response {
+    let path = {
+        let db = s.db.lock().unwrap();
+        match db.get_application(id).ok().flatten() {
+            Some(app) => match &app.screenshot_path {
+                Some(p) if !p.is_empty() => p.clone(),
+                _ => return (StatusCode::NOT_FOUND, "no screenshot for this application").into_response(),
+            },
+            None => return (StatusCode::NOT_FOUND, "application not found").into_response(),
+        }
+    };
+
+    match std::fs::read(&path) {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, "image/png"),
+                (header::CACHE_CONTROL, "max-age=86400"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            format!("screenshot file not found: {path}"),
+        )
+            .into_response(),
+    }
+}
+
 async fn get_settings(State(s): State<AppState>) -> Json<Settings> {
     Json(s.settings.lock().unwrap().clone())
 }
