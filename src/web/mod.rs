@@ -321,7 +321,7 @@ async fn get_stats(State(s): State<AppState>) -> Result<Json<Stats>, ApiError> {
 }
 async fn get_jobs(State(s): State<AppState>) -> Result<Json<Vec<Job>>, ApiError> {
     let db = s.db.lock().unwrap();
-    db.list_jobs().map(Json).map_err(internal)
+    db.list_jobs_unapplied().map(Json).map_err(internal)
 }
 async fn get_pending(State(s): State<AppState>) -> Result<Json<Vec<PendingAction>>, ApiError> {
     let db = s.db.lock().unwrap();

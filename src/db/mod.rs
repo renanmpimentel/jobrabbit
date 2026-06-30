@@ -258,6 +258,24 @@ impl Db {
         Ok(rows)
     }
 
+    /// Jobs that don't yet have an `applied` application — used by the web jobs
+    /// list so already-applied vacancies disappear from view.
+    pub fn list_jobs_unapplied(&self) -> Result<Vec<Job>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, company, url, source, description, fit_score, found_at
+             FROM jobs j
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM applications a
+                 WHERE a.job_id = j.id AND a.status = 'applied'
+             )
+             ORDER BY found_at DESC",
+        )?;
+        let rows = stmt
+            .query_map([], Job::from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
     // ---- Applications -----------------------------------------------------
 
     pub fn add_application(
@@ -789,5 +807,47 @@ mod tests {
 
         // Idempotente: rodar de novo num banco já limpo não falha.
         db.clear_runs().unwrap();
+    }
+
+    #[test]
+    fn list_jobs_unapplied_excludes_applied_jobs() {
+        let db = Db::open_in_memory().unwrap();
+
+        // Create two jobs
+        let job1 = db
+            .upsert_job(&NewJob {
+                title: "Senior Dev".into(),
+                url: "https://jobs.example/1".into(),
+                company: "Company A".into(),
+                source: "LinkedIn".into(),
+                description: "Great opportunity".into(),
+                fit_score: Some(0.85),
+            })
+            .unwrap();
+
+        let job2 = db
+            .upsert_job(&NewJob {
+                title: "Rust Engineer".into(),
+                url: "https://jobs.example/2".into(),
+                company: "Company B".into(),
+                source: "GitHub".into(),
+                description: "Exciting project".into(),
+                fit_score: Some(0.92),
+            })
+            .unwrap();
+
+        // Mark job1 as applied
+        db.add_application(job1, "applied", None, None)
+            .unwrap();
+
+        // Verify list_jobs still returns both jobs
+        let all_jobs = db.list_jobs().unwrap();
+        assert_eq!(all_jobs.len(), 2);
+
+        // Verify list_jobs_unapplied returns only job2 (the non-applied one)
+        let unapplied = db.list_jobs_unapplied().unwrap();
+        assert_eq!(unapplied.len(), 1);
+        assert_eq!(unapplied[0].id, job2);
+        assert_eq!(unapplied[0].title, "Rust Engineer");
     }
 }
