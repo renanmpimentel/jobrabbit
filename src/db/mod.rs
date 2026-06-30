@@ -75,9 +75,10 @@ impl Db {
         Ok(())
     }
 
-    /// Ensures that the canonical answer fields exist (with empty value).
+    /// Ensures that the canonical answer fields (triage + identity) exist (with
+    /// empty value).
     fn seed_answers(&self) -> Result<()> {
-        for (key, label) in ANSWER_FIELDS {
+        for (key, label) in ANSWER_FIELDS.iter().chain(IDENTITY_FIELDS.iter()) {
             self.conn.execute(
                 "INSERT OR IGNORE INTO answers (key, label, value, updated_at)
                  VALUES (?1, ?2, '', ?3)",
@@ -622,10 +623,11 @@ mod tests {
     #[test]
     fn answers_seed_set_and_missing() {
         let db = Db::open_in_memory().unwrap();
-        // seed creates all canonical fields, all empty
+        // seed creates all canonical fields (triage + identity), all empty
         let all = db.get_answers().unwrap();
-        assert_eq!(all.len(), ANSWER_FIELDS.len());
-        assert_eq!(db.missing_answers().unwrap().len(), ANSWER_FIELDS.len());
+        let total_seeded = ANSWER_FIELDS.len() + IDENTITY_FIELDS.len();
+        assert_eq!(all.len(), total_seeded);
+        assert_eq!(db.missing_answers().unwrap().len(), total_seeded);
         assert!(db.answers_map().unwrap().is_empty());
 
         db.set_answer("salary_expectation", "", "R$ 25,000")
@@ -634,7 +636,7 @@ mod tests {
             db.answers_map().unwrap().get("salary_expectation").unwrap(),
             "R$ 25,000"
         );
-        assert_eq!(db.missing_answers().unwrap().len(), ANSWER_FIELDS.len() - 1);
+        assert_eq!(db.missing_answers().unwrap().len(), total_seeded - 1);
 
         // new key (non-canonical) also works
         db.set_answer("custom_question", "Question X?", "yes")
@@ -711,5 +713,18 @@ mod tests {
         assert_eq!(s.claude_session_id.as_deref(), Some("claude-abc"));
         assert_eq!(s.num_turns, Some(3));
         assert!(s.ended_at.is_some());
+    }
+
+    #[test]
+    fn identity_fields_are_seeded() {
+        let db = Db::open_in_memory().unwrap();
+        let answers = db.get_answers().unwrap();
+        for key in ["cpf", "phone", "full_name", "birth_date", "city_state"] {
+            let a = answers
+                .iter()
+                .find(|a| a.key == key)
+                .unwrap_or_else(|| panic!("identity field {key} not seeded"));
+            assert_eq!(a.value, "", "{key} should start empty");
+        }
     }
 }

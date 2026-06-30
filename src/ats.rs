@@ -20,6 +20,7 @@ pub enum Ats {
     Solides,
     Vagas,
     InfoJobs,
+    InHire,
     Generic,
 }
 
@@ -38,6 +39,7 @@ impl Ats {
             Ats::Solides => "Solides Vagas",
             Ats::Vagas => "Vagas.com.br",
             Ats::InfoJobs => "InfoJobs",
+            Ats::InHire => "inHire",
             Ats::Generic => "Generic",
         }
     }
@@ -50,6 +52,7 @@ impl Ats {
             Ats::Greenhouse => "greenhouse",
             Ats::Lever => "lever",
             Ats::Workday => "workday",
+            Ats::InHire => "inhire",
             // Recognized ATS but no dedicated playbook yet → generic
             _ => "generic",
         }
@@ -83,6 +86,8 @@ pub fn detect(url: &str) -> Ats {
         Ats::Vagas
     } else if has("infojobs.com.br") {
         Ats::InfoJobs
+    } else if has("inhire.") {
+        Ats::InHire
     } else {
         Ats::Generic
     }
@@ -94,6 +99,7 @@ const PB_LINKEDIN_EN: &str = include_str!("playbooks/en/linkedin.md");
 const PB_GREENHOUSE_EN: &str = include_str!("playbooks/en/greenhouse.md");
 const PB_LEVER_EN: &str = include_str!("playbooks/en/lever.md");
 const PB_WORKDAY_EN: &str = include_str!("playbooks/en/workday.md");
+const PB_INHIRE_EN: &str = include_str!("playbooks/en/inhire.md");
 const PB_GENERIC_EN: &str = include_str!("playbooks/en/generic.md");
 
 // Default embedded playbooks (Brazilian Portuguese).
@@ -102,6 +108,7 @@ const PB_LINKEDIN_PT_BR: &str = include_str!("playbooks/pt-br/linkedin.md");
 const PB_GREENHOUSE_PT_BR: &str = include_str!("playbooks/pt-br/greenhouse.md");
 const PB_LEVER_PT_BR: &str = include_str!("playbooks/pt-br/lever.md");
 const PB_WORKDAY_PT_BR: &str = include_str!("playbooks/pt-br/workday.md");
+const PB_INHIRE_PT_BR: &str = include_str!("playbooks/pt-br/inhire.md");
 const PB_GENERIC_PT_BR: &str = include_str!("playbooks/pt-br/generic.md");
 
 fn embedded_playbook(slug: &str, locale: Locale) -> &'static str {
@@ -111,12 +118,14 @@ fn embedded_playbook(slug: &str, locale: Locale) -> &'static str {
         (Locale::En, "greenhouse") => PB_GREENHOUSE_EN,
         (Locale::En, "lever") => PB_LEVER_EN,
         (Locale::En, "workday") => PB_WORKDAY_EN,
+        (Locale::En, "inhire") => PB_INHIRE_EN,
         (Locale::En, _) => PB_GENERIC_EN,
         (Locale::PtBr, "gupy") => PB_GUPY_PT_BR,
         (Locale::PtBr, "linkedin") => PB_LINKEDIN_PT_BR,
         (Locale::PtBr, "greenhouse") => PB_GREENHOUSE_PT_BR,
         (Locale::PtBr, "lever") => PB_LEVER_PT_BR,
         (Locale::PtBr, "workday") => PB_WORKDAY_PT_BR,
+        (Locale::PtBr, "inhire") => PB_INHIRE_PT_BR,
         (Locale::PtBr, _) => PB_GENERIC_PT_BR,
     }
 }
@@ -197,5 +206,20 @@ mod tests {
         assert!(playbook(Ats::Gupy, Locale::PtBr)
             .to_lowercase()
             .contains("login"));
+    }
+
+    #[test]
+    fn detects_inhire() {
+        assert_eq!(detect("https://flutter.inhire.app/jobs/123"), Ats::InHire);
+        assert_eq!(detect("https://vaga.inhire.com.br/x"), Ats::InHire);
+        assert_eq!(Ats::InHire.slug(), "inhire");
+        assert_eq!(Ats::InHire.name(), "inHire");
+    }
+
+    #[test]
+    fn inhire_playbook_not_empty() {
+        assert!(!playbook(Ats::InHire, Locale::En).trim().is_empty());
+        assert!(!playbook(Ats::InHire, Locale::PtBr).trim().is_empty());
+        assert!(playbook(Ats::InHire, Locale::PtBr).contains("CPF"));
     }
 }

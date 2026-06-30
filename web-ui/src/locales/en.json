@@ -149,6 +149,15 @@
     "linkedinUrl": "LinkedIn URL",
     "save": "Save Configuration"
   },
+  "identity": {
+    "title": "Personal data",
+    "hint": "Used to fill identity fields on external ATS forms (inHire, etc.)",
+    "cpf": "CPF",
+    "phone": "Mobile (with area code)",
+    "fullName": "Full name",
+    "birthDate": "Date of birth",
+    "cityState": "City/State"
+  },
   "ui": {
     "live": "LIVE",
     "off": "OFF"
