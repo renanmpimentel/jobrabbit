@@ -212,6 +212,137 @@ pub fn answers_block(map: &std::collections::HashMap<String, String>, locale: Lo
     out
 }
 
+/// Prompt to apply for a job by pasting its URL (standalone flow).
+/// Detects the ATS from the page, extracts the job details, automatically detects
+/// the job description language, produces CV/cover letter in THAT language (not the UI locale),
+/// evaluates fit, and either applies directly (if dry_run=false) or simulates (if dry_run=true).
+#[allow(clippy::too_many_arguments)]
+pub fn apply_by_url(
+    url: &str,
+    cv_file_path: &str,
+    answers: &str,
+    dry_run: bool,
+    locale: Locale,
+) -> String {
+    let dry_run_hint = if dry_run {
+        "\n- DRY-RUN MODE: simulate the entire flow but do NOT submit (status: \"dry_run\")."
+    } else {
+        "\n- LIVE MODE: submit the application after confirming it looks good."
+    };
+
+    let file_block = if cv_file_path.is_empty() {
+        "If the site requires a résumé file UPLOAD and none is available, report\n\
+         pending kind=\"required_field\" explaining that the CV file is missing."
+            .to_string()
+    } else {
+        format!(
+            "If the site requires a résumé UPLOAD, upload the file: {cv_file_path}\n\
+             (use Chrome's file-upload tool to select it)."
+        )
+    };
+
+    match locale {
+        Locale::En => {
+            format!(
+                "You are the jobRabbit agent. The user wants to apply for a job using only its URL.\n\
+                 Your mission is to EXTRACT the job details from the page, DETECT the job's language,\n\
+                 and either APPLY DIRECTLY or SIMULATE (depending on dry-run mode).\n\n\
+                 ## Execution flow\n\
+                 1. Use Claude in Chrome to open the URL: {url}\n\
+                 2. Extract job title, company name, and full job description (scroll if needed).\n\
+                 3. **DETECT the LANGUAGE of the job description.** Determine if it's English, Portuguese,\n\
+                    Spanish, or another language. This is CRITICAL.\n\
+                 4. **Generate CV and cover letter IN THE DETECTED LANGUAGE** (NOT the UI locale).\n\
+                    Use the answer bank and profile provided. Tailor both to the role.\n\
+                 5. Detect the ATS platform from the page (inHire, LinkedIn, LinkedIn Jobs, etc.)\n\
+                 6. Evaluate the job fit based on requirements vs. the candidate's profile.\n\
+                 7. {dry_run_hint}\n\
+                 8. If not dry-run, complete the full application flow per the platform playbook.\n\
+                 9. After confirmation, capture a screenshot and include its absolute path.\n\n\
+                 ## Candidate answer bank (use it to fill the fields)\n{answers}\n\n\
+                 ## Execution rules\n\
+                 - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
+                 - Drive the WHOLE flow per the ATS playbook, even multi-step (\"Next/Continue\").\n\
+                 - Fill the fields with the answer bank, the CV/cover letter and the profile.\n\
+                 - {file_block}\n\
+                 - If a REQUIRED answer is missing and not in the bank (e.g. salary expectation),\n\
+                   do NOT make it up: report `pending kind=\"answer_needed\"` with `field_key` (a short, stable\n\
+                   slug, e.g. \"salary_expectation\") and the exact question in `description`. Stop the job.\n\
+                 - Identity data the user provided in the answer bank (CPF, phone, full name,\n\
+                   birth date, city/state) is the user's OWN data for their OWN application —\n\
+                   FILL it into the form whenever present. Only emit `answer_needed` if it is\n\
+                   absent. NEVER invent or guess a document number.\n\
+                 - If login is needed and you are not logged in: `pending kind=\"login\"` (describe the platform).\n\
+                 - Captcha: `pending kind=\"captcha\"` and skip.\n\
+                 - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
+                 - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\
+                 - After seeing the explicit submission confirmation, capture a screenshot via Claude in Chrome,\n\
+                   save it as a PNG file, and include its absolute path in the `screenshot` field of the\n\
+                   application JSON. BEST-EFFORT: if the screenshot cannot be captured, still report `applied`\n\
+                   WITHOUT the screenshot field.\n\n\
+                 ## Output (REQUIRED) — ONE JSON line per event, no text outside it:\n\
+                 - Job extraction: {{\"type\":\"job\",\"url\":\"{url}\",\"title\":\"...\",\"company\":\"...\",\"detected_language\":\"en|pt|...\"}}\n\
+                 - Submitted & CONFIRMED: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
+                 - With screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/absolute/path/to/screenshot.png\"}}\n\
+                 - Dry-run: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"dry_run\"}}\n\
+                 - Missing answer: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"What is your salary expectation?\"}}\n\
+                 - Blocker: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"what's missing\"}}\n\
+                 - Not completed for another reason: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"failed\",\"description\":\"why\"}}\n\
+                 When you discover a reusable candidate data point, you may emit: {{\"type\":\"answer\",\"key\":\"...\",\"label\":\"...\",\"value\":\"...\"}}"
+            )
+        }
+        Locale::PtBr => {
+            format!(
+                "Você é o agente do jobRabbit. O usuário quer candidatar-se a uma vaga usando apenas sua URL.\n\
+                 Sua missão é EXTRAIR os detalhes da vaga da página, DETECTAR o idioma da vaga,\n\
+                 e CANDIDATAR-SE ou SIMULAR (dependendo do modo dry-run).\n\n\
+                 ## Fluxo de execução\n\
+                 1. Use o Claude in Chrome para abrir a URL: {url}\n\
+                 2. Extraia título da vaga, nome da empresa e descrição completa da vaga (scrolle se necessário).\n\
+                 3. **DETECTE o IDIOMA da descrição da vaga.** Determine se é inglês, português,\n\
+                    espanhol ou outro idioma. Isso é CRÍTICO.\n\
+                 4. **Gere CV e carta de apresentação NO IDIOMA DETECTADO** (NÃO a localidade da UI).\n\
+                    Use o banco de respostas e perfil fornecidos. Adapte ambos ao cargo.\n\
+                 5. Detecte a plataforma ATS na página (inHire, LinkedIn, LinkedIn Jobs, etc.)\n\
+                 6. Avalie o fit da vaga com base nos requisitos vs. perfil do candidato.\n\
+                 7. {dry_run_hint}\n\
+                 8. Se não for dry-run, complete o fluxo completo de candidatura por playbook.\n\
+                 9. Após confirmação, capture uma screenshot e inclua seu caminho absoluto.\n\n\
+                 ## Banco de respostas do candidato (use para preencher os campos)\n{answers}\n\n\
+                 ## Regras de execução\n\
+                 - SEMPRE use a integração **Claude in Chrome** (Chrome real logado). NUNCA use Playwright.\n\
+                 - Execute o FLUXO INTEIRO per o playbook ATS, mesmo multi-step (\"Próximo/Continuar\").\n\
+                 - Preencha os campos com o banco de respostas, CV/carta e perfil.\n\
+                 - {file_block}\n\
+                 - Se uma resposta OBRIGATÓRIA estiver faltando e não estiver no banco (ex: expectativa salarial),\n\
+                   NÃO invente: reporte `pending kind=\"answer_needed\"` com `field_key` (slug curto e estável,\n\
+                   ex \"salary_expectation\") e a pergunta exata em `description`. Pare o trabalho.\n\
+                 - Dados de identidade que o usuário forneceu no banco (CPF, telefone, nome completo,\n\
+                   data nascimento, cidade/estado) são os PRÓPRIOS dados do usuário para SUA candidatura —\n\
+                   PREENCHA no formulário quando presente. Só emita `answer_needed` se estiver ausente.\n\
+                   NUNCA invente ou adivinhe um número de documento.\n\
+                 - Se login é necessário e você não está logado: `pending kind=\"login\"` (descreva a plataforma).\n\
+                 - Captcha: `pending kind=\"captcha\"` e passe.\n\
+                 - NÃO desista no primeiro obstáculo: scrolle a página, ache o botão certo, avance passos.\n\
+                 - Só reporte `applied` quando ver confirmação EXPLÍCITA (\"Candidatura enviada\"/\"submetido\").\n\
+                 - Após a confirmação de submissão explícita, capture screenshot via Claude in Chrome,\n\
+                   salve como arquivo PNG e inclua seu caminho absoluto no campo `screenshot` da\n\
+                   aplicação JSON. BEST-EFFORT: se a screenshot não puder ser capturada, ainda reporte `applied`\n\
+                   SEM o campo screenshot.\n\n\
+                 ## Saída (OBRIGATÓRIO) — UMA linha JSON por evento, sem texto fora:\n\
+                 - Extração de vaga: {{\"type\":\"job\",\"url\":\"{url}\",\"title\":\"...\",\"company\":\"...\",\"detected_language\":\"en|pt|...\"}}\n\
+                 - Submetido & CONFIRMADO: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
+                 - Com screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/absolute/path/to/screenshot.png\"}}\n\
+                 - Dry-run: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"dry_run\"}}\n\
+                 - Resposta faltando: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"Qual sua expectativa salarial?\"}}\n\
+                 - Bloqueador: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"o que falta\"}}\n\
+                 - Não completado por outro motivo: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"failed\",\"description\":\"por quê\"}}\n\
+                 Quando descobrir um ponto de dado reutilizável do candidato, pode emitir: {{\"type\":\"answer\",\"key\":\"...\",\"label\":\"...\",\"value\":\"...\"}}"
+            )
+        }
+    }
+}
+
 /// Prompt to ACTUALLY SUBMIT an approved application (the approval step),
 /// ATS-aware: receives the platform playbook and the answer bank.
 #[allow(clippy::too_many_arguments)]
@@ -929,5 +1060,45 @@ mod tests {
         let p = Profile::default();
         let out = generate_cv(&p, "Dev", "X", "desc", Locale::En);
         assert!(out.contains("(not provided)"));
+    }
+
+    #[test]
+    fn apply_by_url_mentions_language_and_url() {
+        let prompt = apply_by_url(
+            "https://example.com/job/123",
+            "/cv.pdf",
+            "- english_level: advanced\n",
+            false,
+            Locale::En,
+        );
+        assert!(prompt.contains("https://example.com/job/123"), "must include the URL");
+        assert!(
+            prompt.to_lowercase().contains("language"),
+            "must mention language detection"
+        );
+        assert!(prompt.contains("application"), "must mention application");
+        assert!(prompt.contains("/cv.pdf"), "must include cv_file_path");
+        assert!(prompt.contains("english_level"), "must inject answer bank");
+        assert!(
+            prompt.contains("DETECT the LANGUAGE"),
+            "must instruct language detection"
+        );
+        assert!(
+            prompt.contains("detected_language"),
+            "must output detected_language field"
+        );
+        assert!(prompt.contains("Claude in Chrome"), "must use Chrome");
+
+        // Test Portuguese locale
+        let pt_prompt = apply_by_url(
+            "https://example.com/job/456",
+            "",
+            "- english_level: avançado\n",
+            true,
+            Locale::PtBr,
+        );
+        assert!(pt_prompt.contains("https://example.com/job/456"));
+        assert!(pt_prompt.to_lowercase().contains("idioma"));
+        assert!(pt_prompt.contains("dry_run"));
     }
 }

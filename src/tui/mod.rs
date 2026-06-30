@@ -1264,6 +1264,7 @@ mod tests {
                 status: "applied".into(),
                 cv: Some("cv".into()),
                 cover: Some("cover".into()),
+                screenshot: None,
             },
             &db,
         );

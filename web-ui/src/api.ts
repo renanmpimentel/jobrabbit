@@ -35,6 +35,7 @@ export interface Application {
   status: string;
   cv_generated: string | null;
   cover_letter: string | null;
+  screenshot_path: string | null;
   created_at: string;
 }
 

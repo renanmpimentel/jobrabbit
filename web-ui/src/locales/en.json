@@ -5,6 +5,7 @@
     "pending": "Pending",
     "session": "Session",
     "ats": "ATS",
+    "applications": "Applications",
     "feedback": "Feedback",
     "doctor": "Health",
     "config": "Config"
@@ -165,5 +166,26 @@
   "ui": {
     "live": "LIVE",
     "off": "OFF"
+  },
+  "applications": {
+    "title": "Apply by URL",
+    "totalLabel": "Total Applications",
+    "appliedLabel": "Applied",
+    "urlPlaceholder": "Paste job URL and press Enter or click Apply",
+    "applyButton": "Apply",
+    "applying": "Applying…",
+    "hint": "Paste a job posting URL. The agent will open it, detect the language, generate your CV and cover letter in that language, and apply directly.",
+    "listTitle": "Applications",
+    "viewProof": "View screenshot",
+    "empty": "No applications yet. Paste a URL above and click Apply.",
+    "jobNotFound": "(job details not found)",
+    "status": {
+      "applied": "Applied",
+      "dry_run": "Simulated",
+      "ready": "Ready",
+      "pending": "Pending",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    }
   }
 }

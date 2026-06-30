@@ -171,6 +171,7 @@ fn router(state: AppState) -> Router {
         .route("/api/doctor", get(get_doctor))
         // Commands
         .route("/api/run", post(post_run))
+        .route("/api/apply-url", post(post_apply_url))
         .route("/api/feedback/run", post(post_feedback_run))
         .route("/api/cv-review/run", post(post_cv_review))
         .route("/api/cv-improve/run", post(post_cv_improve))
@@ -479,6 +480,34 @@ async fn get_doctor(State(s): State<AppState>) -> Json<Vec<crate::core::doctor::
 
 async fn post_run(State(s): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
     start_search(&s).map_err(|e| (StatusCode::CONFLICT, e))?;
+    Ok(ok())
+}
+
+#[derive(Deserialize)]
+struct ApplyUrlBody {
+    url: String,
+}
+async fn post_apply_url(
+    State(s): State<AppState>,
+    Json(body): Json<ApplyUrlBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let url = body.url.trim();
+    if url.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "url required".into()));
+    }
+    let (prompt, settings) = {
+        let db = s.db.lock().unwrap();
+        let settings = s.settings.lock().unwrap().clone();
+        let prompt = actions::apply_by_url_prompt(url, &db, &settings).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to build prompt: {e}"),
+            )
+        })?;
+        (prompt, settings)
+    };
+    drop(settings); // release lock before spawning
+    spawn_one(&s, prompt, "single-job application").map_err(|e| (StatusCode::CONFLICT, e))?;
     Ok(ok())
 }
 
