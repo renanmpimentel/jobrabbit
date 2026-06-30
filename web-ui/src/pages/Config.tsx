@@ -14,6 +14,14 @@ const IDENTITY_FIELDS: { key: string; labelKey: string }[] = [
   { key: "city_state", labelKey: "identity.cityState" },
 ];
 
+// Formats a birth date as DD/MM/AAAA while typing (digits only, max 8).
+function maskBirthDate(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">
@@ -176,7 +184,14 @@ export default function Config() {
             <Row key={f.key} label={t(f.labelKey)}>
               <Input
                 value={ident[f.key] ?? ""}
-                onChange={(e) => setIdent({ ...ident, [f.key]: e.target.value })}
+                onChange={(e) =>
+                  setIdent({
+                    ...ident,
+                    [f.key]: f.key === "birth_date" ? maskBirthDate(e.target.value) : e.target.value,
+                  })
+                }
+                inputMode={f.key === "birth_date" ? "numeric" : undefined}
+                placeholder={f.key === "birth_date" ? "DD/MM/AAAA" : undefined}
                 className="w-64"
               />
             </Row>
