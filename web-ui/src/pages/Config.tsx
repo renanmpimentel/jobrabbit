@@ -1,8 +1,18 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useSettings, useInvalidate, post, type Settings } from "../hooks";
+import { useSettings, useAnswers, useInvalidate, post, type Settings } from "../hooks";
 import { LANGUAGES } from "../i18n";
 import { Card, CardHeader, Button, Input, Toggle } from "../ui";
+
+// Identity field keys (must match IDENTITY_FIELDS in src/db/models.rs) paired
+// with their i18n label key.
+const IDENTITY_FIELDS: { key: string; labelKey: string }[] = [
+  { key: "full_name", labelKey: "identity.fullName" },
+  { key: "cpf", labelKey: "identity.cpf" },
+  { key: "phone", labelKey: "identity.phone" },
+  { key: "birth_date", labelKey: "identity.birthDate" },
+  { key: "city_state", labelKey: "identity.cityState" },
+];
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -19,18 +29,37 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 export default function Config() {
   const { t, i18n } = useTranslation();
   const settings = useSettings();
+  const answers = useAnswers();
   const invalidate = useInvalidate();
   const [s, setS] = useState<Settings | null>(null);
+  const [ident, setIdent] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (settings.data) setS(settings.data);
   }, [settings.data]);
 
+  useEffect(() => {
+    if (answers.data) {
+      const next: Record<string, string> = {};
+      for (const f of IDENTITY_FIELDS) {
+        next[f.key] = answers.data.find((a) => a.key === f.key)?.value ?? "";
+      }
+      setIdent(next);
+    }
+  }, [answers.data]);
+
   if (!s) return <div className="text-sm text-fg-muted">{t("config.loading")}</div>;
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS({ ...s, [k]: v });
 
-  const save = () => post("/settings", s).then(invalidate).catch((e) => alert(String(e)));
+  // Saves both the settings and the personal-data (identity) answers in one go.
+  const save = () =>
+    Promise.all([
+      post("/settings", s),
+      ...IDENTITY_FIELDS.map((f) => post("/answers", { key: f.key, value: ident[f.key] ?? "" })),
+    ])
+      .then(invalidate)
+      .catch((e) => alert(String(e)));
 
   // Changing the language updates both the UI (i18n) and the backend `locale`
   // (so the agent searches/writes in the same language), persisting immediately.
@@ -134,6 +163,22 @@ export default function Config() {
           </Row>
         </div>
       </Card>
+
+      <Card>
+        <CardHeader title={t("identity.title")} />
+        <div className="divide-y divide-edge">
+          {IDENTITY_FIELDS.map((f) => (
+            <Row key={f.key} label={t(f.labelKey)}>
+              <Input
+                value={ident[f.key] ?? ""}
+                onChange={(e) => setIdent({ ...ident, [f.key]: e.target.value })}
+                className="w-64"
+              />
+            </Row>
+          ))}
+        </div>
+      </Card>
+      <p className="px-1 text-xs text-fg-muted">{t("identity.hint")}</p>
 
       <Button variant="primary" onClick={save}>
         {t("config.save")}

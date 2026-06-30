@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   User,
-  IdCard,
   AlertTriangle,
   TrendingUp,
   Terminal,
@@ -20,7 +19,6 @@ import { isRunning, post, useInvalidate, type AgentStatus } from "./hooks";
 import { Button, StatusPill, cn } from "./ui";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
-import Identity from "./pages/Identity";
 import Pending from "./pages/Pending";
 import Session from "./pages/Session";
 import FeedbackPage from "./pages/Feedback";
@@ -31,7 +29,6 @@ import Doctor from "./pages/Doctor";
 const TABS = [
   { id: "dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, el: <Dashboard /> },
   { id: "profile", labelKey: "nav.profile", icon: User, el: <Profile /> },
-  { id: "identity", labelKey: "nav.identity", icon: IdCard, el: <Identity /> },
   { id: "pending", labelKey: "nav.pending", icon: AlertTriangle, el: <Pending /> },
   { id: "session", labelKey: "nav.session", icon: Terminal, el: <Session /> },
   { id: "ats", labelKey: "nav.ats", icon: FileCheck2, el: <Ats /> },

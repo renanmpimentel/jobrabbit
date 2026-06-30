@@ -2,7 +2,6 @@
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Profile",
-    "identity": "Personal data",
     "pending": "Pending",
     "session": "Session",
     "ats": "ATS",
@@ -157,8 +156,7 @@
     "phone": "Mobile (with area code)",
     "fullName": "Full name",
     "birthDate": "Date of birth",
-    "cityState": "City/State",
-    "save": "Save personal data"
+    "cityState": "City/State"
   },
   "ui": {
     "live": "LIVE",

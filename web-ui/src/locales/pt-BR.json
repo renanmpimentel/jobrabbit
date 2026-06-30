@@ -2,7 +2,6 @@
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Perfil",
-    "identity": "Dados pessoais",
     "pending": "Pendências",
     "session": "Sessão",
     "ats": "ATS",
@@ -157,8 +156,7 @@
     "phone": "Celular com DDD",
     "fullName": "Nome completo",
     "birthDate": "Data de nascimento",
-    "cityState": "Cidade/Estado",
-    "save": "Salvar dados pessoais"
+    "cityState": "Cidade/Estado"
   },
   "ui": {
     "live": "LIVE",
