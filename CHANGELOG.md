@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
+### Added
+- **Applications tab**: paste a job link and apply directly to that single vacancy.
+  The agent opens the URL, reads the description, **detects its language and
+  generates the CV/cover letter/answers in that language**, then applies. The tab
+  also shows the application count and the list of applications.
+- **Brazilian identity fields** (CPF, mobile with area code, full name, birth
+  date, city/state) in the answer bank, editable in Config, with an explicit
+  agent policy to fill the user's own provided identity data (never inventing
+  document numbers). Birth-date field has a `DD/MM/AAAA` input mask.
+- **inHire** ATS detection with a dedicated playbook.
+- **Clear execution data**: wipe found jobs, applications, pending actions,
+  sessions and feedback (Config "Danger Zone" button and `--reset-runs` CLI flag),
+  keeping profile, searches and answers.
+- **Screenshot proof**: best-effort screenshot of the submission confirmation,
+  stored per application and viewable from the Applications tab.
+
+### Changed
+- **ATS evaluation** now targets a minimum score of 90/100, with the improve
+  flow iterating (bounded) until the rewritten CV reaches the bar.
+- Already-applied jobs no longer appear in the jobs list.
+- Session tab auto-scroll reliably follows the live stream and resumes when you
+  scroll back to the bottom.
+
 ## [0.1.0] - 2026-06-30
 
 First public release. 🐇
