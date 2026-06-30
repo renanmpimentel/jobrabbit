@@ -104,6 +104,9 @@ pub fn search_and_evaluate(
                  work model, requirements).\n\n\
                  {policy}\n\n\
                  {language}\
+                 ## CV/cover letter language\n\
+                 When you generate a CV or cover letter for a job, write it in the LANGUAGE OF THE JOB\n\
+                 DESCRIPTION (detect it per job), NOT the UI language.\n\n\
                  ## Output protocol (REQUIRED)\n\
                  Emit ONE JSON line per event (NDJSON), with no text outside the lines, no code fences.\n\
                  Types:\n\
@@ -172,6 +175,9 @@ pub fn search_and_evaluate(
                  modelo de trabalho, requisitos).\n\n\
                  {politica}\n\n\
                  {idioma}\
+                 ## Idioma do CV/carta\n\
+                 Ao gerar um CV ou carta de apresentação para uma vaga, escreva-o no IDIOMA DA\n\
+                 DESCRIÇÃO DA VAGA (detecte por vaga), NÃO no idioma da UI.\n\n\
                  ## Protocolo de saída (OBRIGATÓRIO)\n\
                  Emita UMA linha JSON por evento (NDJSON), sem texto fora das linhas, sem cercas de código.\n\
                  Tipos:\n\
@@ -534,7 +540,8 @@ pub fn analyze_feedback(profile: &Profile, results_summary: &str, locale: Locale
              ### Recent results\n{results_summary}\n\n\
              ## Output format (REQUIRED)\n\
              Reply with a SINGLE JSON line (NDJSON), no text outside it, no fences:\n\
-             {{\"type\":\"feedback\",\"summary\":\"summary up to 140 characters\",\"suggestions\":\"- suggestion 1\\n- suggestion 2\"}}",
+             {{\"type\":\"feedback\",\"summary\":\"summary up to 140 characters\",\"suggestions\":\"- suggestion 1\\n- suggestion 2\"}}\n\
+             Write the summary and suggestions in English.",
             profile = profile_block(profile, locale),
         ),
         Locale::PtBr => format!(
@@ -545,7 +552,8 @@ pub fn analyze_feedback(profile: &Profile, results_summary: &str, locale: Locale
              ### Resultados recentes\n{resumo}\n\n\
              ## Formato de saída (OBRIGATÓRIO)\n\
              Responda com UMA única linha JSON (NDJSON), sem texto fora dela, sem cercas:\n\
-             {{\"type\":\"feedback\",\"summary\":\"resumo de até 140 caracteres\",\"suggestions\":\"- sugestão 1\\n- sugestão 2\"}}",
+             {{\"type\":\"feedback\",\"summary\":\"resumo de até 140 caracteres\",\"suggestions\":\"- sugestão 1\\n- sugestão 2\"}}\n\
+             Escreva o resumo e as sugestões em português (pt-BR).",
             perfil = profile_block(profile, locale),
             resumo = results_summary,
         ),
@@ -588,7 +596,8 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<target summary or 'general'>\",\
                  \"report\":\"markdown: ## Score, ## Strengths, ## Issues, ## Suggestions (bullets)\"}}\n\
                  The `report` must use \\n for line breaks. Be specific and actionable. When explaining the score, \n\
-                 reference the rubric above.",
+                 reference the rubric above.\n\
+                 Write the ENTIRE `report` in English, regardless of the language of the résumé or target job.",
             )
         }
         Locale::PtBr => {
@@ -625,7 +634,8 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<resumo do alvo ou 'geral'>\",\
                  \"report\":\"markdown: ## Nota, ## Pontos fortes, ## Problemas, ## Sugestões (bullets)\"}}\n\
                  O `report` deve usar \\n para quebras de linha. Seja específico e acionável. Ao explicar a nota, \n\
-                 referencie a rubrica acima.",
+                 referencie a rubrica acima.\n\
+                 Escreva TODO o `report` em português (pt-BR), independentemente do idioma do currículo ou da vaga-alvo.",
             )
         }
     }
@@ -677,7 +687,8 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  {{\"type\":\"cv_review\",\"score\":<your assessed score ≥90>,\"target\":\"<same as above>\",\
                  \"report\":\"markdown: ## Score, ## Strengths, ## What was improved (bullets)\"}}\n\
                  In both `content` and `report`, use \\n for line breaks. Deliver the entire CV in the \n\
-                 cv_improved content, and explain your self-assessment logic in the review.",
+                 cv_improved content, and explain your self-assessment logic in the review.\n\
+                 Write BOTH the improved CV `content` and the `report` in English.",
             )
         }
         Locale::PtBr => {
@@ -721,7 +732,8 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  {{\"type\":\"cv_review\",\"score\":<sua nota avaliada ≥90>,\"target\":\"<mesmo que acima>\",\
                  \"report\":\"markdown: ## Nota, ## Pontos fortes, ## O que foi melhorado (bullets)\"}}\n\
                  Em `content` e `report`, use \\n para quebras de linha. Entregue o CV inteiro no \n\
-                 cv_improved content, e explique sua lógica de auto-avaliação na review.",
+                 cv_improved content, e explique sua lógica de auto-avaliação na review.\n\
+                 Escreva TANTO o `content` do CV melhorado QUANTO o `report` em português (pt-BR).",
             )
         }
     }
@@ -1010,6 +1022,30 @@ mod tests {
         assert!(pt_prompt.contains("cv_improved"));
         assert!(pt_prompt.contains("cv_review"));
         assert!(pt_prompt.contains("90"), "PT improve_cv must target 90 score");
+    }
+
+    #[test]
+    fn output_language_follows_config_except_application() {
+        // ATS review + improve + feedback follow the CONFIG locale.
+        assert!(review_cv("cv", None, Locale::PtBr).contains("português"));
+        assert!(review_cv("cv", None, Locale::En).contains("in English"));
+        assert!(improve_cv("cv", None, Locale::PtBr).contains("português"));
+        assert!(improve_cv("cv", None, Locale::En).contains("in English"));
+        assert!(analyze_feedback(&sample_profile(), "x", Locale::PtBr).contains("português"));
+        assert!(analyze_feedback(&sample_profile(), "x", Locale::En).contains("in English"));
+
+        // EXCEPTION: the generated CV/cover in the search flow follow the JOB's language.
+        let v = SearchVariant {
+            id: 1,
+            label: "L".into(),
+            query: "q".into(),
+            enabled: true,
+            created_at: "x".into(),
+        };
+        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::PtBr, false);
+        assert!(pt.contains("IDIOMA DA"), "search flow must generate CV/cover in the job's language");
+        let en = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::En, false);
+        assert!(en.contains("LANGUAGE OF THE JOB"));
     }
 
     #[test]
