@@ -5,7 +5,7 @@
     "pending": "Pendências",
     "session": "Sessão",
     "ats": "ATS",
-    "applications": "Candidaturas",
+    "applications": "Vagas",
     "feedback": "Feedback",
     "doctor": "Saúde",
     "config": "Config"
@@ -84,7 +84,11 @@
     "filterPlaceholder": "filtrar…",
     "following": "Seguindo",
     "paused": "Pausado",
-    "noActivity": "aguardando atividade — clique em \"Rodar busca\" para ver o agente ao vivo."
+    "noActivity": "aguardando atividade — clique em \"Rodar busca\" para ver o agente ao vivo.",
+    "continueTitle": "Continuar após ação manual",
+    "continueHint": "Depois de resolver um bloqueio no Chrome (captcha/login/campo), peça ao agente para retomar.",
+    "continuePlaceholder": "Instrução opcional (ou deixe em branco para só continuar)",
+    "continueButton": "Continuar"
   },
   "feedback": {
     "title": "Feedback do agente",
@@ -179,6 +183,10 @@
     "viewProof": "Ver comprovante",
     "empty": "Nenhuma candidatura ainda. Cole uma URL acima e clique em Candidatar.",
     "jobNotFound": "(detalhes da vaga não encontrados)",
+    "filterAvailable": "Disponíveis",
+    "filterApplied": "Aplicadas",
+    "availableEmpty": "Nenhuma vaga disponível ainda.",
+    "appliedEmpty": "Nenhuma vaga aplicada ainda.",
     "status": {
       "applied": "Candidatada",
       "dry_run": "Simulada",

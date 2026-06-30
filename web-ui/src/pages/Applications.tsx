@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Send, ExternalLink, Loader2, Image } from "lucide-react";
-import { useStats, useApplications, useJobs, useInvalidate, post } from "../hooks";
+import { useStats, useApplications, useJobs, useAppliedJobs, useInvalidate, post } from "../hooks";
 import { Card, CardHeader, Badge, Empty, Input, Button, StatCard, cn } from "../ui";
 import { fadeUp, stagger } from "../motion";
 
@@ -18,13 +18,18 @@ export default function Applications() {
   const stats = useStats();
   const applications = useApplications();
   const jobs = useJobs();
+  const appliedJobs = useAppliedJobs();
   const invalidate = useInvalidate();
 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<"available" | "applied">("available");
 
   const apps = applications.data ?? [];
-  const jobsMap = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+  const allJobs = jobs.data ?? [];
+  const appJobs = appliedJobs.data ?? [];
+  const jobsMap = new Map(allJobs.map((j) => [j.id, j]));
+  const appsByJobId = new Map(apps.map((a) => [a.job_id, a]));
 
   async function applyByUrl() {
     if (!url.trim()) return;
@@ -89,70 +94,143 @@ export default function Applications() {
         </Card>
       </motion.div>
 
-      {/* Applications List */}
+      {/* Filter and Jobs/Applications List */}
       <motion.div variants={fadeUp}>
         <Card>
           <CardHeader title={t("applications.listTitle")} />
-          {apps.length === 0 ? (
-            <Empty>{t("applications.empty")}</Empty>
-          ) : (
-            <ul className="divide-y divide-edge">
-              {apps.map((app) => {
-                const job = jobsMap.get(app.job_id);
-                return (
-                  <motion.li
-                    key={app.id}
-                    variants={fadeUp}
-                    className="px-5 py-3.5 transition hover:bg-white/[0.02]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge tone={statusTone(app.status)}>
-                            {t(`applications.status.${app.status}`, app.status)}
-                          </Badge>
-                          {app.screenshot_path && (
+          <div className="space-y-4 p-4">
+            {/* Filter Buttons */}
+            <div className="flex flex-col gap-1.5">
+              {(["available", "applied"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-left text-sm transition",
+                    filter === f
+                      ? "border-neon/50 bg-neon/10 text-neon"
+                      : "border-edge text-fg-muted hover:bg-white/[0.04]",
+                  )}
+                >
+                  {f === "available" ? t("applications.filterAvailable") : t("applications.filterApplied")}
+                </button>
+              ))}
+            </div>
+
+            {/* Available Jobs */}
+            {filter === "available" && (
+              <>
+                {allJobs.length === 0 ? (
+                  <Empty>{t("applications.availableEmpty")}</Empty>
+                ) : (
+                  <ul className="divide-y divide-edge">
+                    {allJobs.map((job) => (
+                      <motion.li
+                        key={job.id}
+                        variants={fadeUp}
+                        className="px-0 py-3.5 transition hover:bg-white/[0.02]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {job.fit_score !== null && (
+                                <Badge tone="iris">
+                                  {Math.round(job.fit_score)}%
+                                </Badge>
+                              )}
+                            </div>
                             <a
-                              href={`/api/screenshot/${app.id}`}
+                              href={job.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-fg-muted hover:text-neon transition"
-                              title={t("applications.viewProof")}
+                              className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-neon mb-1"
+                              title={job.title}
                             >
-                              <Image size={14} />
+                              <span className="truncate">
+                                {job.title} <span className="text-fg-muted">@ {job.company}</span>
+                              </span>
+                              <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                             </a>
-                          )}
+                            <div className="text-xs text-fg-dim">
+                              {job.source}
+                            </div>
+                          </div>
                         </div>
-                        {job ? (
-                          <a
-                            href={job.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-neon mb-1"
-                            title={job.title}
-                          >
-                            <span className="truncate">
-                              {job.title} <span className="text-fg-muted">@ {job.company}</span>
-                            </span>
-                            <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
-                          </a>
-                        ) : (
-                          <div className="text-sm text-fg-muted">{t("applications.jobNotFound")}</div>
-                        )}
-                        <div className="text-xs text-fg-dim mt-1">
-                          {new Date(app.created_at).toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.li>
-                );
-              })}
-            </ul>
-          )}
+                      </motion.li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+
+            {/* Applied Jobs */}
+            {filter === "applied" && (
+              <>
+                {appJobs.length === 0 ? (
+                  <Empty>{t("applications.appliedEmpty")}</Empty>
+                ) : (
+                  <ul className="divide-y divide-edge">
+                    {appJobs.map((job) => {
+                      const app = appsByJobId.get(job.id);
+                      return (
+                        <motion.li
+                          key={job.id}
+                          variants={fadeUp}
+                          className="px-0 py-3.5 transition hover:bg-white/[0.02]"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                {app && (
+                                  <>
+                                    <Badge tone={statusTone(app.status)}>
+                                      {t(`applications.status.${app.status}`, app.status)}
+                                    </Badge>
+                                    {app.screenshot_path && (
+                                      <a
+                                        href={`/api/screenshot/${app.id}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-fg-muted hover:text-neon transition"
+                                        title={t("applications.viewProof")}
+                                      >
+                                        <Image size={14} />
+                                      </a>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <a
+                                href={job.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-neon mb-1"
+                                title={job.title}
+                              >
+                                <span className="truncate">
+                                  {job.title} <span className="text-fg-muted">@ {job.company}</span>
+                                </span>
+                                <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
+                              </a>
+                              {app && (
+                                <div className="text-xs text-fg-dim mt-1">
+                                  {new Date(app.created_at).toLocaleDateString(undefined, {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
         </Card>
       </motion.div>
     </motion.div>
