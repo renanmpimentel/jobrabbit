@@ -422,16 +422,32 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                 _ => "## No target job — evaluate only the overall ATS quality.\n".to_string(),
             };
             format!(
-                "You are a résumé reviewer specialized in ATS. Do NOT browse the web.\n\
-                 Evaluate the CV below across the categories: ATS parseability (structure/headings/no tables\n\
-                 or columns that break parsing), formatting, action verbs, QUANTIFIED achievements,\n\
-                 contact/links and — if there is a target job — keyword match.\n\n\
+                "You are a résumé reviewer specialized in ATS. Do NOT browse the web.\n\n\
+                 ## Scoring rubric (0-100)\n\
+                 Evaluate the CV across these weighted ATS criteria:\n\
+                 1. **Parseability & structure** (20 pts): Clear headings, no tables/multi-column layouts, \n\
+                    easy for ATS parsers to follow.\n\
+                 2. **Target keyword match** (25 pts, if target job given): Incorporates real keywords from \n\
+                    job description; prioritizes exact matches (e.g. \"Python\", \"Kubernetes\", \"5+ years\").\n\
+                 3. **Action verbs & strong bullets** (20 pts): Uses verbs like \"led\", \"delivered\", \n\
+                    \"improved\", \"optimized\"; avoids passive language.\n\
+                 4. **Quantified achievements** (15 pts): Bullets include numbers, percentages, metrics \n\
+                    (e.g., \"Increased throughput by 40%\", \"Led team of 8\").\n\
+                 5. **Contact & links present** (10 pts): Name, email, phone, LinkedIn/GitHub URLs visible \n\
+                    and properly formatted.\n\
+                 6. **Conciseness & relevance** (10 pts): No fluff; each line justifies its space.\n\n\
+                 ## Target bar: 90/100\n\
+                 - **≥90**: ATS-ready CV that passes screening filters and maximizes recruiter review.\n\
+                 - **70-89**: Functional CV but with fixable gaps (missing keywords, weak bullets, or unclear structure).\n\
+                 - **<70**: Significant issues that will likely be rejected by ATS filters (poor parsing, \n\
+                    minimal quantification, or weak keyword match).\n\n\
                  {target_block}\n\
                  ## Résumé\n{cv_text}\n\n\
                  ## Output (REQUIRED) — a SINGLE JSON line (NDJSON), no text outside it, no fences:\n\
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<target summary or 'general'>\",\
-                 \"report\":\"short markdown: ## Score, ## Strengths, ## Issues, ## Suggestions (bullets)\"}}\n\
-                 The `report` must use \\n for line breaks. Be specific and actionable.",
+                 \"report\":\"markdown: ## Score, ## Strengths, ## Issues, ## Suggestions (bullets)\"}}\n\
+                 The `report` must use \\n for line breaks. Be specific and actionable. When explaining the score, \n\
+                 reference the rubric above.",
             )
         }
         Locale::PtBr => {
@@ -442,16 +458,33 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                 _ => "## Sem vaga-alvo — avalie apenas a qualidade ATS geral.\n".to_string(),
             };
             format!(
-                "Você é um avaliador de currículos especialista em ATS. NÃO navegue na web.\n\
-                 Avalie o CV abaixo nas categorias: parseabilidade ATS (estrutura/headings/sem tabelas\n\
-                 ou colunas que quebram parsing), formato, verbos de ação, conquistas QUANTIFICADAS,\n\
-                 contato/links e — se houver vaga-alvo — match de keywords.\n\n\
+                "Você é um avaliador de currículos especialista em ATS. NÃO navegue na web.\n\n\
+                 ## Rubrica de pontuação (0-100)\n\
+                 Avalie o CV nestes critérios ATS ponderados:\n\
+                 1. **Parseabilidade & estrutura** (20 pts): Headings claros, sem tabelas/layouts com múltiplas \n\
+                    colunas, fácil para parsers ATS.\n\
+                 2. **Match de palavras-chave do alvo** (25 pts, se vaga-alvo fornecida): Incorpora keywords \n\
+                    reais da descrição; prioriza matches exatos (ex.: \"Python\", \"Kubernetes\", \"5+ anos\").\n\
+                 3. **Verbos de ação & bullets fortes** (20 pts): Usa verbos como \"liderou\", \"entregou\", \n\
+                    \"melhorou\", \"otimizou\"; evita linguagem passiva.\n\
+                 4. **Realizações quantificadas** (15 pts): Bullets incluem números, percentuais, métricas \n\
+                    (ex.: \"Aumentou throughput em 40%\", \"Liderou time de 8 pessoas\").\n\
+                 5. **Contato & links presentes** (10 pts): Nome, email, telefone, URLs LinkedIn/GitHub \n\
+                    visíveis e bem formatados.\n\
+                 6. **Concisão & relevância** (10 pts): Sem clichês; cada linha justifica seu espaço.\n\n\
+                 ## Barra-alvo: 90/100\n\
+                 - **≥90**: CV pronto para ATS, passa pelos filtros de triagem e maximiza revisão por recrutador.\n\
+                 - **70-89**: CV funcional mas com gaps corrigíveis (keywords faltando, bullets fracos, \n\
+                    ou estrutura pouco clara).\n\
+                 - **<70**: Problemas significativos que provavelmente serão rejeitados pelos filtros ATS \n\
+                    (parsing ruim, quantificação mínima, ou match de keywords fraco).\n\n\
                  {bloco_alvo}\n\
                  ## Currículo\n{cv_text}\n\n\
                  ## Saída (OBRIGATÓRIO) — UMA única linha JSON (NDJSON), sem texto fora dela, sem cercas:\n\
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<resumo do alvo ou 'geral'>\",\
-                 \"report\":\"markdown curto: ## Nota, ## Pontos fortes, ## Problemas, ## Sugestões (bullets)\"}}\n\
-                 O `report` deve usar \\n para quebras de linha. Seja específico e acionável.",
+                 \"report\":\"markdown: ## Nota, ## Pontos fortes, ## Problemas, ## Sugestões (bullets)\"}}\n\
+                 O `report` deve usar \\n para quebras de linha. Seja específico e acionável. Ao explicar a nota, \n\
+                 referencie a rubrica acima.",
             )
         }
     }
@@ -459,6 +492,7 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
 
 /// Prompt to GENERATE an improved version of the résumé (ATS-optimized).
 /// No browsing — just rewrites based on the CV (and the target job, if any).
+/// Instructs self-iteration internally to reach ≥90 score, max 3 passes.
 pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String {
     match locale {
         Locale::En => {
@@ -473,6 +507,20 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                 "You are a résumé and ATS expert. Do NOT browse the web and do NOT invent\n\
                  experiences, dates, companies or numbers that are not in the original CV —\n\
                  just REWRITE and REORGANIZE what already exists in a stronger way.\n\n\
+                 ## Self-Iteration to ≥90\n\
+                 Internally iterate on the CV rewrite using these steps (up to 3 passes maximum):\n\
+                 1. Generate an improved version with ATS best practices (clear structure, action verbs, \n\
+                    quantified metrics, relevant keywords).\n\
+                 2. Mentally self-score the rewritten CV against the ATS rubric:\n\
+                    - Parseability & structure (20 pts): Clear headings, no tables/columns.\n\
+                    - Keyword match (25 pts): Incorporates target keywords if a job is given.\n\
+                    - Action verbs (20 pts): Strong, active language.\n\
+                    - Quantified achievements (15 pts): Includes numbers and metrics.\n\
+                    - Contact & links (10 pts): Proper formatting, all present.\n\
+                    - Conciseness (10 pts): No filler.\n\
+                    TARGET: ≥90/100 to be ATS-ready.\n\
+                 3. If your self-assessment is below 90, revise the CV and iterate again (step 1–2).\n\
+                 4. Stop after 3 passes OR when you assess the CV at ≥90; do not exceed 3 iterations.\n\n\
                  Generate an IMPROVED version of the résumé below:\n\
                  - Clean, ATS-parseable structure (clear headings, no tables/columns).\n\
                  - Bullets with action verbs and QUANTIFIED achievements (use the original's numbers).\n\
@@ -480,10 +528,15 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  - English, concise, ready to send.\n\n\
                  {target_block}\n\
                  ## Original résumé\n{cv_text}\n\n\
-                 ## Output (REQUIRED) — a SINGLE JSON line (NDJSON), no text outside it, no fences:\n\
-                 {{\"type\":\"cv_improved\",\"target\":\"<target summary or 'general'>\",\
+                 ## Output (REQUIRED) — TWO JSON lines (NDJSON), no text outside them, no fences:\n\
+                 First, emit the improved CV:\n\
+                 {{\"type\":\"cv_version\",\"target\":\"<target summary or 'general'>\",\
                  \"content\":\"<full improved résumé in MARKDOWN>\"}}\n\
-                 In `content`, use \\n for line breaks. Deliver the entire CV, not a summary.",
+                 Then, emit your final self-assessment as a cv_review:\n\
+                 {{\"type\":\"cv_review\",\"score\":<your assessed score ≥90>,\"target\":\"<same as above>\",\
+                 \"report\":\"markdown: ## Score, ## Strengths, ## What was improved (bullets)\"}}\n\
+                 In both `content` and `report`, use \\n for line breaks. Deliver the entire CV in the \n\
+                 cv_version content, and explain your self-assessment logic in the review.",
             )
         }
         Locale::PtBr => {
@@ -498,6 +551,20 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                 "Você é um especialista em currículos e ATS. NÃO navegue na web e NÃO invente\n\
                  experiências, datas, empresas ou números que não estejam no CV original —\n\
                  apenas REESCREVA e REORGANIZE o que já existe de forma mais forte.\n\n\
+                 ## Auto-Iteração para ≥90\n\
+                 Internamente, itere sobre a reescrita do CV usando estes passos (máximo de 3 passes):\n\
+                 1. Gere uma versão melhorada com as melhores práticas ATS (estrutura clara, verbos de ação, \n\
+                    métricas quantificadas, keywords relevantes).\n\
+                 2. Auto-avalie mentalmente o CV reescrito conforme a rubrica ATS:\n\
+                    - Parseabilidade & estrutura (20 pts): Headings claros, sem tabelas/colunas.\n\
+                    - Match de keywords (25 pts): Incorpora keywords da vaga se fornecida.\n\
+                    - Verbos de ação (20 pts): Linguagem forte e ativa.\n\
+                    - Realizações quantificadas (15 pts): Inclui números e métricas.\n\
+                    - Contato & links (10 pts): Formatação correta, todos presentes.\n\
+                    - Concisão (10 pts): Sem conteúdo desnecessário.\n\
+                    META: ≥90/100 para estar pronto para ATS.\n\
+                 3. Se sua auto-avaliação for abaixo de 90, revise o CV e itere novamente (passos 1–2).\n\
+                 4. Pare após 3 passes OU quando avaliar o CV em ≥90; não ultrapasse 3 iterações.\n\n\
                  Gere uma versão MELHORADA do currículo abaixo:\n\
                  - Estrutura limpa e parseável por ATS (headings claros, sem tabelas/colunas).\n\
                  - Bullets com verbos de ação e conquistas QUANTIFICADAS (use os números do original).\n\
@@ -505,10 +572,15 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  - Português, conciso, pronto para enviar.\n\n\
                  {bloco_alvo}\n\
                  ## Currículo original\n{cv_text}\n\n\
-                 ## Saída (OBRIGATÓRIO) — UMA única linha JSON (NDJSON), sem texto fora dela, sem cercas:\n\
-                 {{\"type\":\"cv_improved\",\"target\":\"<resumo do alvo ou 'geral'>\",\
+                 ## Saída (OBRIGATÓRIO) — DUAS linhas JSON (NDJSON), sem texto fora delas, sem cercas:\n\
+                 Primeiro, emita o CV melhorado:\n\
+                 {{\"type\":\"cv_version\",\"target\":\"<resumo do alvo ou 'geral'>\",\
                  \"content\":\"<currículo melhorado completo em MARKDOWN>\"}}\n\
-                 No `content`, use \\n para quebras de linha. Entregue o CV inteiro, não um resumo.",
+                 Depois, emita sua auto-avaliação final como cv_review:\n\
+                 {{\"type\":\"cv_review\",\"score\":<sua nota avaliada ≥90>,\"target\":\"<mesmo que acima>\",\
+                 \"report\":\"markdown: ## Nota, ## Pontos fortes, ## O que foi melhorado (bullets)\"}}\n\
+                 Em `content` e `report`, use \\n para quebras de linha. Entregue o CV inteiro no \n\
+                 cv_version content, e explique sua lógica de auto-avaliação na review.",
             )
         }
     }
@@ -777,10 +849,26 @@ mod tests {
     fn review_cv_includes_target_and_format() {
         let general = review_cv("my cv", None, Locale::En);
         assert!(general.contains("cv_review"));
-        assert!(general.contains("parseability"));
+        assert!(general.to_lowercase().contains("parseability"));
+        assert!(general.contains("90"), "EN review_cv must mention target bar of 90");
         let with_target = review_cv("my cv", Some("Eng Manager Kafka"), Locale::En);
         assert!(with_target.contains("Eng Manager Kafka"));
         assert!(with_target.contains("match"));
+    }
+
+    #[test]
+    fn improve_cv_iterates_to_90() {
+        let en_prompt = improve_cv("my cv", Some("Senior Backend"), Locale::En);
+        assert!(en_prompt.contains("cv_version"), "must emit cv_version");
+        assert!(en_prompt.contains("cv_review"), "must emit cv_review after iteration");
+        assert!(en_prompt.contains("90"), "must target 90 score in iteration");
+        assert!(en_prompt.contains("iterate") || en_prompt.contains("pass"),
+                "must mention iteration/passes for self-evaluation");
+
+        let pt_prompt = improve_cv("meu cv", Some("Gerente Sênior"), Locale::PtBr);
+        assert!(pt_prompt.contains("cv_version"));
+        assert!(pt_prompt.contains("cv_review"));
+        assert!(pt_prompt.contains("90"), "PT improve_cv must target 90 score");
     }
 
     #[test]
