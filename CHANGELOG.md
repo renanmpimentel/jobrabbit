@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-01
+
+### Added
+- **In-app pending alerts**: while you watch the execution log, a new pending
+  action now raises an instant **toast**, a persistent **banner** at the top of the
+  Execution screen (*"the agent is waiting for you"* + one-click **Resolve**), and a
+  live **count badge** on the Pending tab — so you never miss that the agent stopped
+  and is waiting on you. The desktop notification is kept as well.
+- **Human-review safety gate** (`require_human_review`, on by default): the agent
+  always generates the CV/cover letter and stops for your explicit approval before
+  filling or submitting anything on a job site — even in `autonomous`/`hybrid` apply
+  modes. Your own identity data (answer bank) is still filled directly. Toggle it in
+  Config (web and TUI).
+
+### Changed
+- **Reliable résumé upload**: applications now upload a **PDF rendered from your CV
+  content** (the Chrome upload tool can't select `.docx`), falling back to your
+  configured file — uploads no longer fail because of the file format.
+- **UI polish**: refined minimal design with the **Inter** typeface and token-based
+  primitives, with tightened light/dark theming.
+
+### Fixed
+- **Autofill hygiene**: answer-bank values are now sanitized before being stored or
+  typed into a form — stripping leaked transcript metadata (timestamps,
+  `Claude responded:` markers) and collapsing accidental duplication. Apply prompts
+  also instruct the agent to clear a field before typing and to fill each field
+  exactly once.
+
 ## [1.1.0] - 2026-07-01
 
 ### Added
