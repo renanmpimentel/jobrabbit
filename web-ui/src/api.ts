@@ -92,6 +92,7 @@ export interface Settings {
   hybrid_threshold: number;
   dry_run: boolean;
   language_filter: boolean;
+  work_model: string;
   locale: string;
   cv_file_path: string;
   linkedin_url: string;

@@ -47,6 +47,7 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
                 settings.hybrid_threshold,
                 settings.locale,
                 settings.language_filter,
+                &settings.work_model,
             )
         })
         .collect())

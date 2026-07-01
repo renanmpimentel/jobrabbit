@@ -136,6 +136,17 @@ export default function Config() {
           <Row label={t("config.languageFilterLabel")} hint={t("config.languageFilterHint")}>
             <Toggle on={s.language_filter} onClick={() => set("language_filter", !s.language_filter)} />
           </Row>
+          <Row label={t("config.workModelLabel")} hint={t("config.workModelHint")}>
+            <select
+              value={s.work_model}
+              onChange={(e) => set("work_model", e.target.value)}
+              className="rounded-lg border border-edge bg-ink-850 px-3 py-1.5 text-sm text-fg"
+            >
+              <option value="remote">{t("config.workModelRemote")}</option>
+              <option value="onsite">{t("config.workModelOnsite")}</option>
+              <option value="hybrid">{t("config.workModelHybrid")}</option>
+            </select>
+          </Row>
         </div>
       </Card>
 

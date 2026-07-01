@@ -45,6 +45,8 @@ pub struct Settings {
     pub dry_run: bool,
     /// If `true`, only consider jobs in the active locale's language; skip the rest.
     pub language_filter: bool,
+    /// Work model filter: "remote" | "onsite" | "hybrid". Only search for jobs matching this model.
+    pub work_model: String,
     /// UI / agent language. English by default.
     pub locale: Locale,
     /// Path to a résumé file (PDF/DOCX) to UPLOAD when a site requires it.
@@ -69,6 +71,7 @@ impl Default for Settings {
             hybrid_threshold: 0.9,
             dry_run: false,
             language_filter: false,
+            work_model: "remote".to_string(),
             locale: Locale::En,
             cv_file_path: String::new(),
             linkedin_url: String::new(),
