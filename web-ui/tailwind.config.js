@@ -44,7 +44,7 @@ export default {
       },
       borderRadius: {
         lg: "10px",
-        xl: "14px",
+        xl: "12px",
       },
       boxShadow: {
         sm: "0 1px 2px rgb(0 0 0 / 0.06)",

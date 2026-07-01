@@ -15,7 +15,7 @@ export function cn(...parts: unknown[]): string {
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("bg-surface border border-border rounded-xl shadow-sm", className)}>{children}</div>;
+  return <div className={cn("bg-surface border border-border rounded-xl shadow-sm hover:border-border/80 transition-colors", className)}>{children}</div>;
 }
 
 export function CardHeader({
@@ -28,10 +28,10 @@ export function CardHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+    <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
       <div>
-        <h3 className="text-[15px] font-semibold tracking-tight text-fg">{title}</h3>
-        {hint && <p className="mt-0.5 text-xs text-fg-muted">{hint}</p>}
+        <h3 className="text-base font-semibold tracking-tight text-fg">{title}</h3>
+        {hint && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
       </div>
       {right}
     </div>
@@ -60,19 +60,19 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
   const styles: Record<Variant, string> = {
     primary:
-      "bg-accent text-accent-fg font-semibold hover:opacity-90",
-    danger: "bg-danger text-white hover:opacity-90",
+      "bg-accent text-accent-fg font-semibold hover:bg-accent/90 active:bg-accent/80",
+    danger: "bg-danger text-white hover:bg-danger/90 active:bg-danger/80",
     ghost: "bg-transparent text-fg-muted hover:text-fg hover:bg-surface-2",
-    subtle: "bg-surface-2 text-fg border border-border hover:bg-border/40",
+    subtle: "bg-surface-2 text-fg border border-border hover:border-border/60 hover:bg-surface-2/80",
   };
   const sizes: Record<Size, string> = {
-    sm: "px-2.5 py-1.5 text-xs gap-1",
-    md: "px-3.5 py-2 text-sm gap-1.5",
+    sm: "px-3 py-1.5 text-xs gap-1",
+    md: "px-4 py-2 text-sm gap-1.5",
   };
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-xl transition-all duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-lg transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
         styles[variant],
         sizes[size],
         className,
@@ -108,7 +108,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "w-full rounded-xl border border-border bg-surface px-3.5 py-2 text-sm text-fg outline-none transition placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/25",
+        "w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-fg outline-none transition placeholder:text-fg-subtle focus:border-accent focus:ring-1 focus:ring-accent/30",
         className,
       )}
       {...props}
@@ -120,7 +120,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "scroll-thin w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-fg outline-none transition placeholder:text-fg-subtle focus:border-accent focus:ring-2 focus:ring-accent/25",
+        "scroll-thin w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm leading-relaxed text-fg outline-none transition placeholder:text-fg-subtle focus:border-accent focus:ring-1 focus:ring-accent/30",
         className,
       )}
       {...props}
@@ -188,9 +188,9 @@ export function StatusPill({
 export function StatCard({ label, value }: { label: string; value: number }) {
   const n = useCountUp(value);
   return (
-    <motion.div variants={fadeUp} className="bg-surface border border-border relative overflow-hidden rounded-xl px-5 py-4 shadow-sm">
+    <motion.div variants={fadeUp} className="relative overflow-hidden rounded-xl border border-border bg-surface px-6 py-5 shadow-sm transition-colors hover:border-border/60">
       <div className="font-mono text-3xl font-semibold tracking-tight text-fg">{n}</div>
-      <div className="mt-1 text-xs text-fg-muted">{label}</div>
+      <div className="mt-2 text-xs text-fg-muted">{label}</div>
     </motion.div>
   );
 }

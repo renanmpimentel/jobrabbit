@@ -58,9 +58,9 @@ function SidebarNavItem({ tab, isActive, onClick }: { tab: typeof TABS[0]; isAct
     <button
       onClick={onClick}
       className={cn(
-        "relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+        "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
         isActive
-          ? "bg-accent/10 text-accent font-medium"
+          ? "bg-accent/12 text-accent font-medium"
           : "text-fg-muted hover:text-fg hover:bg-surface-2",
       )}
     >
@@ -69,7 +69,7 @@ function SidebarNavItem({ tab, isActive, onClick }: { tab: typeof TABS[0]; isAct
       {isActive && (
         <motion.span
           layoutId="sidebar-active"
-          className="absolute -left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent"
+          className="absolute -left-0.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
           transition={{ type: "spring", stiffness: 500, damping: 34 }}
         />
       )}
@@ -98,20 +98,20 @@ function Sidebar({ active, setActive, open, setOpen }: { active: string; setActi
 
       {/* Sidebar */}
       <motion.aside
-        initial={{ x: -240 }}
-        animate={{ x: open ? 0 : -240 }}
+        initial={{ x: -248 }}
+        animate={{ x: open ? 0 : -248 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-60 flex-col border-r border-border bg-surface lg:static lg:translate-x-0",
+          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface lg:static lg:translate-x-0",
           "lg:animate-none"
         )}
       >
         {/* Brand */}
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-border bg-surface-2 text-base">
+        <div className="flex items-center gap-3 border-b border-border px-5 py-5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface-2 text-base font-semibold">
             🐇
           </span>
-          <span className="text-lg font-bold tracking-tight text-fg">
+          <span className="text-base font-bold tracking-tight text-fg">
             job<span className="text-accent">Rabbit</span>
           </span>
           <button
@@ -119,12 +119,12 @@ function Sidebar({ active, setActive, open, setOpen }: { active: string; setActi
             className="ml-auto lg:hidden"
             aria-label="Close sidebar"
           >
-            <X size={20} className="text-fg-muted" />
+            <X size={18} className="text-fg-muted" />
           </button>
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scroll-thin">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 py-4 scroll-thin">
           {TABS.map((tab) => (
             <SidebarNavItem
               key={tab.id}
@@ -162,17 +162,17 @@ function Topbar({ active, setActive, sidebarOpen, setSidebarOpen }: { active: st
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div className="flex items-center justify-between gap-4 px-6 py-4">
         {/* Left: page title + hamburger */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="lg:hidden"
             aria-label="Toggle sidebar"
           >
-            <Menu size={20} className="text-fg-muted" />
+            <Menu size={18} className="text-fg-muted" />
           </button>
-          <h1 className="text-[15px] font-semibold text-fg">{t(tab.labelKey)}</h1>
+          <h1 className="text-base font-semibold text-fg">{t(tab.labelKey)}</h1>
         </div>
 
         {/* Right: pills + buttons */}
@@ -188,7 +188,7 @@ function Topbar({ active, setActive, sidebarOpen, setSidebarOpen }: { active: st
           </Button>
 
           <Button variant="primary" onClick={run} disabled={running} size="sm">
-            {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+            {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
             <span className="hidden sm:inline">{running ? t("header.runningEllipsis") : t("header.runSearch")}</span>
           </Button>
         </div>
@@ -215,7 +215,7 @@ function Shell() {
 
           {/* Content */}
           <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6">
+            <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={active}

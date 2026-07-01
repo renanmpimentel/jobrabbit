@@ -57,9 +57,9 @@ export default function Applications() {
   }
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-8">
       {/* Stats */}
-      <motion.div variants={stagger} className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+      <motion.div variants={stagger} className="grid grid-cols-2 gap-4 sm:grid-cols-2">
         <StatCard label={t("applications.totalLabel")} value={stats.data?.total_applications ?? 0} />
         <StatCard label={t("applications.appliedLabel")} value={stats.data?.applied ?? 0} />
       </motion.div>
@@ -68,8 +68,8 @@ export default function Applications() {
       <motion.div variants={fadeUp}>
         <Card>
           <CardHeader title={t("applications.title")} />
-          <div className="space-y-3 px-5 py-4">
-            <div className="flex items-center gap-2">
+          <div className="space-y-4 px-6 py-5">
+            <div className="flex items-center gap-3">
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -89,12 +89,12 @@ export default function Applications() {
               >
                 {busy ? (
                   <>
-                    <Loader2 size={15} className="animate-spin" />
+                    <Loader2 size={14} className="animate-spin" />
                     <span className="hidden sm:inline">{t("applications.applying")}</span>
                   </>
                 ) : (
                   <>
-                    <Send size={15} />
+                    <Send size={14} />
                     <span className="hidden sm:inline">{t("applications.applyButton")}</span>
                   </>
                 )}
@@ -109,17 +109,17 @@ export default function Applications() {
       <motion.div variants={fadeUp}>
         <Card>
           <CardHeader title={t("applications.listTitle")} />
-          <div className="space-y-4 p-4">
+          <div className="space-y-5 px-6 py-5">
             {/* Filter Buttons */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               {(["available", "applied"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    "rounded-lg border px-3 py-1.5 text-left text-sm transition",
+                    "rounded-lg border px-4 py-2 text-left text-sm transition-colors",
                     filter === f
-                      ? "border-accent/50 bg-accent/10 text-accent"
+                      ? "border-accent/40 bg-accent/12 text-accent font-medium"
                       : "border-border text-fg-muted hover:bg-surface-2",
                   )}
                 >
@@ -134,16 +134,16 @@ export default function Applications() {
                 {allJobs.length === 0 ? (
                   <Empty>{t("applications.availableEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-border">
+                  <ul className="divide-y divide-border -mx-6 -mb-5">
                     {allJobs.map((job) => (
                       <motion.li
                         key={job.id}
                         variants={fadeUp}
-                        className="px-0 py-3.5 transition hover:bg-surface-2"
+                        className="px-6 py-4 transition hover:bg-surface-2"
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-2">
                               {job.fit_score !== null && (
                                 <Badge tone="iris">
                                   {Math.round(job.fit_score)}%
@@ -154,7 +154,7 @@ export default function Applications() {
                               href={job.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-accent mb-1"
+                              className="group flex items-center gap-2 truncate text-sm text-fg hover:text-accent mb-2"
                               title={job.title}
                             >
                               <span className="truncate">
@@ -180,7 +180,7 @@ export default function Applications() {
                 {appJobs.length === 0 ? (
                   <Empty>{t("applications.appliedEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-border">
+                  <ul className="divide-y divide-border -mx-6 -mb-5">
                     {appJobs.map((job) => {
                       const app = appsByJobId.get(job.id);
                       const noteValue = editingNotes[app?.id ?? 0] ?? (app?.notes ?? "");
@@ -188,11 +188,11 @@ export default function Applications() {
                         <motion.li
                           key={job.id}
                           variants={fadeUp}
-                          className="px-0 py-3.5 transition hover:bg-surface-2"
+                          className="px-6 py-4 transition hover:bg-surface-2"
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-2">
                                 {app && (
                                   <>
                                     <Badge tone={statusTone(app.status)}>
@@ -216,7 +216,7 @@ export default function Applications() {
                                 href={job.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-accent mb-1"
+                                className="group flex items-center gap-2 truncate text-sm text-fg hover:text-accent mb-2"
                                 title={job.title}
                               >
                                 <span className="truncate">
@@ -225,7 +225,7 @@ export default function Applications() {
                                 <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                               </a>
                               {app && (
-                                <div className="text-xs text-fg-subtle mt-1">
+                                <div className="text-xs text-fg-subtle mt-2">
                                   {new Date(app.created_at).toLocaleDateString(undefined, {
                                     year: "numeric",
                                     month: "short",
@@ -234,8 +234,8 @@ export default function Applications() {
                                 </div>
                               )}
                               {app && (
-                                <div className="mt-3 space-y-2">
-                                  <div className="flex items-center gap-2">
+                                <div className="mt-4 space-y-3">
+                                  <div className="flex items-center gap-3">
                                     <label className="text-xs text-fg-muted font-medium">
                                       {t("applications.stageLabel")}:
                                     </label>
@@ -249,7 +249,7 @@ export default function Applications() {
                                           .then(() => invalidate())
                                           .catch((e) => alert(String(e)));
                                       }}
-                                      className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs text-fg outline-none transition focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
+                                      className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-fg outline-none transition focus:border-accent/40 focus:ring-1 focus:ring-accent/25"
                                     >
                                       <option value="applied">
                                         {t("applications.stage.applied")}
