@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { AgentProvider, useAgent } from "./events";
 import { NavProvider } from "./nav";
-import { isRunning, post, useInvalidate, type AgentStatus } from "./hooks";
+import { isRunning, post, useInvalidate, useSettings, type AgentStatus } from "./hooks";
 import { Button, StatusPill, cn } from "./ui";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -149,11 +149,33 @@ function Shell() {
   );
 }
 
+// Keeps the backend `locale` in sync with the language shown in the UI. The UI
+// language can come from the browser detector (i18n) without ever touching the
+// backend, which would leave the agent (ATS/search/feedback) running in the wrong
+// language. On load, if they diverge, the displayed language wins and is pushed
+// to the backend.
+function LocaleSync() {
+  const { i18n } = useTranslation();
+  const settings = useSettings();
+  const invalidate = useInvalidate();
+  useEffect(() => {
+    if (!settings.data) return;
+    const uiLocale = i18n.language === "pt-BR" ? "pt-br" : "en";
+    if (settings.data.locale !== uiLocale) {
+      post("/settings", { ...settings.data, locale: uiLocale })
+        .then(invalidate)
+        .catch(() => {});
+    }
+  }, [settings.data, i18n.language, invalidate]);
+  return null;
+}
+
 export default function App() {
   return (
     <AgentProvider>
       <div className="bg-atmosphere" />
       <div className="bg-grain" />
+      <LocaleSync />
       <Shell />
     </AgentProvider>
   );
