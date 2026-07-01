@@ -26,7 +26,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div>
-        <div className="text-sm text-slate-100">{label}</div>
+        <div className="text-sm text-fg">{label}</div>
         {hint && <div className="text-xs text-fg-muted">{hint}</div>}
       </div>
       <div className="flex-shrink-0">{children}</div>
@@ -88,12 +88,12 @@ export default function Config() {
     <div className="mx-auto max-w-2xl space-y-4">
       <Card>
         <CardHeader title={t("common.language")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           <Row label={t("common.language")}>
             <select
               value={i18n.language}
               onChange={(e) => changeLanguage(e.target.value)}
-              className="rounded-lg border border-edge bg-ink-850 px-3 py-1.5 text-sm text-fg"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -107,12 +107,12 @@ export default function Config() {
 
       <Card>
         <CardHeader title={t("config.application")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           <Row label={t("config.modeLabel")} hint={t("config.modeHint")}>
             <select
               value={s.apply_mode}
               onChange={(e) => set("apply_mode", e.target.value)}
-              className="rounded-lg border border-edge bg-ink-850 px-3 py-1.5 text-sm text-fg"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
             >
               <option value="review">review</option>
               <option value="autonomous">autonomous</option>
@@ -140,7 +140,7 @@ export default function Config() {
             <select
               value={s.work_model}
               onChange={(e) => set("work_model", e.target.value)}
-              className="rounded-lg border border-edge bg-ink-850 px-3 py-1.5 text-sm text-fg"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
             >
               <option value="remote">{t("config.workModelRemote")}</option>
               <option value="onsite">{t("config.workModelOnsite")}</option>
@@ -152,7 +152,7 @@ export default function Config() {
 
       <Card>
         <CardHeader title={t("config.agent")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           <Row label={t("config.useChrome")} hint={t("config.useChromeHint")}>
             <Toggle on={s.use_chrome} onClick={() => set("use_chrome", !s.use_chrome)} />
           </Row>
@@ -178,7 +178,7 @@ export default function Config() {
 
       <Card>
         <CardHeader title={t("config.data")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           <Row label={t("config.cvPath")}>
             <Input value={s.cv_file_path} onChange={(e) => set("cv_file_path", e.target.value)} className="w-64" />
           </Row>
@@ -190,7 +190,7 @@ export default function Config() {
 
       <Card>
         <CardHeader title={t("identity.title")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           {IDENTITY_FIELDS.map((f) => (
             <Row key={f.key} label={t(f.labelKey)}>
               <Input
@@ -213,7 +213,7 @@ export default function Config() {
 
       <Card>
         <CardHeader title={t("config.dangerZone")} />
-        <div className="divide-y divide-edge">
+        <div className="divide-y divide-border">
           <Row label={t("config.resetRuns")} hint={t("config.resetRunsHint")}>
             <Button variant="danger" onClick={resetRuns}>
               {t("config.resetRuns")}

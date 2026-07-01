@@ -64,12 +64,12 @@ export default function Profile() {
         {!variants.data?.length ? (
           <Empty>{t("profile.noVariants")}</Empty>
         ) : (
-          <ul className="divide-y divide-edge">
+          <ul className="divide-y divide-border">
             {variants.data.map((v) => (
               <li key={v.id} className="flex items-center gap-3 px-4 py-2.5">
                 <Toggle on={v.enabled} onClick={() => post(`/variants/${v.id}/toggle`).then(invalidate)} />
                 <div className="flex-1">
-                  <div className="text-sm text-slate-100">{v.label}</div>
+                  <div className="text-sm text-fg">{v.label}</div>
                   <div className="text-xs text-fg-muted">{v.query}</div>
                 </div>
                 {!v.enabled && <Badge>{t("profile.disabled")}</Badge>}
@@ -80,7 +80,7 @@ export default function Profile() {
             ))}
           </ul>
         )}
-        <div className="flex flex-wrap items-center gap-2 border-t border-edge p-4">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border p-4">
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}

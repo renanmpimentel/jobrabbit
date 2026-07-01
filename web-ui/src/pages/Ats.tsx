@@ -76,7 +76,7 @@ export default function Ats() {
             {!r ? (
               <Empty>{t("ats.noReview")}</Empty>
             ) : (
-              <div className="md text-sm text-slate-200">
+              <div className="md text-sm text-fg">
                 <Markdown>{r.report}</Markdown>
               </div>
             )}
@@ -93,17 +93,17 @@ export default function Ats() {
                   <Button variant="ghost" onClick={copy}>
                     {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? t("ats.copied") : t("ats.copy")}
                   </Button>
-                  <span className="flex items-center overflow-hidden rounded-xl border border-edge">
-                    <span className="bg-white/[0.04] px-2.5 py-1.5 text-xs text-fg-muted">
+                  <span className="flex items-center overflow-hidden rounded-xl border border-border">
+                    <span className="bg-surface-2 px-2.5 py-1.5 text-xs text-fg-muted">
                       <Download size={14} className="inline" /> {t("ats.download")}
                     </span>
-                    <a href="/api/cv-version/download?format=pdf" download className="border-l border-edge bg-neon px-3 py-1.5 text-sm font-semibold text-ink-900 hover:bg-neon-dim">
+                    <a href="/api/cv-version/download?format=pdf" download className="border-l border-border bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90">
                       PDF
                     </a>
-                    <a href="/api/cv-version/download?format=docx" download className="border-l border-edge bg-white/[0.04] px-3 py-1.5 text-sm text-fg hover:bg-white/[0.08]">
+                    <a href="/api/cv-version/download?format=docx" download className="border-l border-border bg-surface-2 px-3 py-1.5 text-sm text-fg hover:bg-border/40">
                       DOCX
                     </a>
-                    <a href="/api/cv-version/download?format=md" download className="border-l border-edge bg-white/[0.04] px-3 py-1.5 text-sm text-fg hover:bg-white/[0.08]">
+                    <a href="/api/cv-version/download?format=md" download className="border-l border-border bg-surface-2 px-3 py-1.5 text-sm text-fg hover:bg-border/40">
                       .md
                     </a>
                   </span>
@@ -115,7 +115,7 @@ export default function Ats() {
             {!v ? (
               <Empty>{t("ats.noCvVersion")}</Empty>
             ) : (
-              <div className="md max-h-[55vh] overflow-auto scroll-thin rounded-xl border border-edge bg-ink-900/50 p-4 text-sm text-fg">
+              <div className="md max-h-[55vh] overflow-auto scroll-thin rounded-xl border border-border bg-surface-2 p-4 text-sm text-fg">
                 <Markdown>{v.content}</Markdown>
               </div>
             )}
@@ -136,7 +136,7 @@ export default function Ats() {
                     onClick={() => setMode(m)}
                     className={cn(
                       "rounded-lg border px-3 py-1.5 text-left text-sm transition",
-                      mode === m ? "border-neon/50 bg-neon/10 text-neon" : "border-edge text-fg-muted hover:bg-white/[0.04]",
+                      mode === m ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-fg-muted hover:bg-surface-2",
                     )}
                   >
                     {m === "general" ? t("ats.generalQuality") : m === "job" ? t("ats.againstJob") : t("ats.pasteDescription")}
@@ -149,7 +149,7 @@ export default function Ats() {
               <select
                 value={jobId}
                 onChange={(e) => setJobId(e.target.value ? Number(e.target.value) : "")}
-                className="w-full rounded-xl border border-edge bg-ink-850 px-3 py-2 text-sm text-fg"
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg"
               >
                 <option value="">{t("ats.selectJob")}</option>
                 {jobs.data?.map((j) => (
@@ -164,7 +164,7 @@ export default function Ats() {
               <Textarea rows={6} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={t("ats.pasteJobPlaceholder")} />
             )}
 
-            <div className="flex flex-col gap-2 border-t border-edge pt-3">
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
               <Button className="w-full justify-center" disabled={busy} onClick={() => run("/cv-review/run")}>
                 {t("ats.evaluate")}
               </Button>

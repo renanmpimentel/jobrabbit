@@ -78,9 +78,9 @@ export default function Dashboard() {
           {!jobs.data?.length ? (
             <Empty>{t("dashboard.noJobs")}</Empty>
           ) : (
-            <ul className="divide-y divide-edge">
+            <ul className="divide-y divide-border">
               {jobs.data.slice(0, 25).map((j) => (
-                <li key={j.id} className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-white/[0.02]">
+                <li key={j.id} className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-surface-2">
                   <Badge tone={fitTone(j.fit_score)}>
                     {j.fit_score != null ? j.fit_score.toFixed(2) : "—"}
                   </Badge>
@@ -88,7 +88,7 @@ export default function Dashboard() {
                     href={j.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="group flex flex-1 items-center gap-1.5 truncate text-sm text-fg hover:text-neon"
+                    className="group flex flex-1 items-center gap-1.5 truncate text-sm text-fg hover:text-accent"
                     title={j.title}
                   >
                     <span className="truncate">
@@ -96,7 +96,7 @@ export default function Dashboard() {
                     </span>
                     <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                   </a>
-                  {j.source && <span className="font-mono text-[11px] text-fg-dim">{j.source}</span>}
+                  {j.source && <span className="font-mono text-[11px] text-fg-subtle">{j.source}</span>}
                 </li>
               ))}
             </ul>

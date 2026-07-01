@@ -7,7 +7,7 @@ import { cn } from "../ui";
 import { fadeUp, stagger } from "../motion";
 
 const META: Record<CheckStatus, { icon: typeof CheckCircle2; color: string; ring: string }> = {
-  Ok: { icon: CheckCircle2, color: "text-neon", ring: "border-neon/30" },
+  Ok: { icon: CheckCircle2, color: "text-accent", ring: "border-accent/30" },
   Warn: { icon: AlertTriangle, color: "text-warn", ring: "border-warn/30" },
   Fail: { icon: XCircle, color: "text-danger", ring: "border-danger/40" },
 };
@@ -30,7 +30,7 @@ export default function Doctor() {
           right={
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-fg-muted">
-                <span className="text-neon">{counts.Ok ?? 0} {t("doctor.ok")}</span> ·{" "}
+                <span className="text-accent">{counts.Ok ?? 0} {t("doctor.ok")}</span> ·{" "}
                 <span className="text-warn">{t("doctor.warnings", { count: counts.Warn ?? 0 })}</span> ·{" "}
                 <span className="text-danger">{t("doctor.errors", { count: counts.Fail ?? 0 })}</span>
               </span>
@@ -43,7 +43,7 @@ export default function Doctor() {
         {checks.length === 0 ? (
           <Empty>{doctor.isLoading ? t("doctor.checking") : t("doctor.noResults")}</Empty>
         ) : (
-          <motion.ul variants={stagger} initial="hidden" animate="show" className="divide-y divide-edge">
+          <motion.ul variants={stagger} initial="hidden" animate="show" className="divide-y divide-border">
             {checks.map((c) => {
               const m = META[c.status];
               const Icon = m.icon;
@@ -54,7 +54,7 @@ export default function Doctor() {
                     <div className="text-sm font-medium text-fg">{c.name}</div>
                     <div className="text-sm text-fg-muted">{c.detail}</div>
                     {c.hint && (
-                      <div className={cn("mt-1.5 rounded-lg border bg-ink-850 px-2.5 py-1.5 text-xs text-fg-muted", m.ring)}>
+                      <div className={cn("mt-1.5 rounded-lg border bg-surface-2 px-2.5 py-1.5 text-xs text-fg-muted", m.ring)}>
                         ↳ {c.hint}
                       </div>
                     )}

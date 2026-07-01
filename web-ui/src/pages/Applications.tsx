@@ -119,8 +119,8 @@ export default function Applications() {
                   className={cn(
                     "rounded-lg border px-3 py-1.5 text-left text-sm transition",
                     filter === f
-                      ? "border-neon/50 bg-neon/10 text-neon"
-                      : "border-edge text-fg-muted hover:bg-white/[0.04]",
+                      ? "border-accent/50 bg-accent/10 text-accent"
+                      : "border-border text-fg-muted hover:bg-surface-2",
                   )}
                 >
                   {f === "available" ? t("applications.filterAvailable") : t("applications.filterApplied")}
@@ -134,12 +134,12 @@ export default function Applications() {
                 {allJobs.length === 0 ? (
                   <Empty>{t("applications.availableEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-edge">
+                  <ul className="divide-y divide-border">
                     {allJobs.map((job) => (
                       <motion.li
                         key={job.id}
                         variants={fadeUp}
-                        className="px-0 py-3.5 transition hover:bg-white/[0.02]"
+                        className="px-0 py-3.5 transition hover:bg-surface-2"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -154,7 +154,7 @@ export default function Applications() {
                               href={job.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-neon mb-1"
+                              className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-accent mb-1"
                               title={job.title}
                             >
                               <span className="truncate">
@@ -162,7 +162,7 @@ export default function Applications() {
                               </span>
                               <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                             </a>
-                            <div className="text-xs text-fg-dim">
+                            <div className="text-xs text-fg-subtle">
                               {job.source}
                             </div>
                           </div>
@@ -180,7 +180,7 @@ export default function Applications() {
                 {appJobs.length === 0 ? (
                   <Empty>{t("applications.appliedEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-edge">
+                  <ul className="divide-y divide-border">
                     {appJobs.map((job) => {
                       const app = appsByJobId.get(job.id);
                       const noteValue = editingNotes[app?.id ?? 0] ?? (app?.notes ?? "");
@@ -188,7 +188,7 @@ export default function Applications() {
                         <motion.li
                           key={job.id}
                           variants={fadeUp}
-                          className="px-0 py-3.5 transition hover:bg-white/[0.02]"
+                          className="px-0 py-3.5 transition hover:bg-surface-2"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
@@ -203,7 +203,7 @@ export default function Applications() {
                                         href={`/api/screenshot/${app.id}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-fg-muted hover:text-neon transition"
+                                        className="text-fg-muted hover:text-accent transition"
                                         title={t("applications.viewProof")}
                                       >
                                         <Image size={14} />
@@ -216,7 +216,7 @@ export default function Applications() {
                                 href={job.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-neon mb-1"
+                                className="group flex items-center gap-1.5 truncate text-sm text-fg hover:text-accent mb-1"
                                 title={job.title}
                               >
                                 <span className="truncate">
@@ -225,7 +225,7 @@ export default function Applications() {
                                 <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                               </a>
                               {app && (
-                                <div className="text-xs text-fg-dim mt-1">
+                                <div className="text-xs text-fg-subtle mt-1">
                                   {new Date(app.created_at).toLocaleDateString(undefined, {
                                     year: "numeric",
                                     month: "short",
@@ -249,7 +249,7 @@ export default function Applications() {
                                           .then(() => invalidate())
                                           .catch((e) => alert(String(e)));
                                       }}
-                                      className="rounded-lg border border-edge bg-ink-850 px-2.5 py-1 text-xs text-fg outline-none transition focus:border-neon/50 focus:ring-2 focus:ring-neon/15"
+                                      className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs text-fg outline-none transition focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
                                     >
                                       <option value="applied">
                                         {t("applications.stage.applied")}
@@ -316,7 +316,7 @@ export default function Applications() {
                                   <img
                                     src={`/api/screenshot/${app.id}`}
                                     alt={t("applications.viewProof")}
-                                    className="h-24 w-auto max-w-[240px] rounded-md border border-edge object-cover object-top transition hover:border-neon/50"
+                                    className="h-24 w-auto max-w-[240px] rounded-md border border-border object-cover object-top transition hover:border-accent/50"
                                   />
                                 </a>
                               )}

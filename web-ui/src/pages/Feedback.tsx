@@ -35,10 +35,10 @@ export default function FeedbackPage() {
       {!feedback.data?.length ? (
         <Empty>{t("feedback.noFeedback")}</Empty>
       ) : (
-        <ul className="divide-y divide-edge">
+        <ul className="divide-y divide-border">
           {feedback.data.map((f) => (
             <li key={f.id} className="px-4 py-3">
-              <div className="text-sm font-medium text-slate-100">{f.summary}</div>
+              <div className="text-sm font-medium text-fg">{f.summary}</div>
               <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-fg-muted">{f.suggestions}</pre>
               <div className="mt-1 text-[10px] text-fg-muted">{f.created_at}</div>
             </li>
