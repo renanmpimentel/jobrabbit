@@ -53,12 +53,13 @@ async fn async_main() -> Result<()> {
         return selftest_agent().await;
     }
 
-    // Limpa os dados de execução (vagas, candidaturas, pendências, sessões,
-    // feedback) e sai. Preserva perfil, variantes de busca e respostas.
+    // Limpa os dados de execução (vagas não aplicadas, candidaturas não aplicadas,
+    // pendências, sessões e feedback) e sai. Preserva perfil, variantes de busca,
+    // respostas e TODAS as vagas/candidaturas com status='applied'.
     if std::env::args().any(|a| a == "--reset-runs") {
         let db = Db::open(config::db_path()?)?;
         db.clear_runs()?;
-        println!("execution data cleared (jobs, applications, pending, sessions, feedback)");
+        println!("execution data cleared (applied jobs and their proofs are kept)");
         return Ok(());
     }
 

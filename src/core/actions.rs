@@ -82,6 +82,9 @@ pub fn approval_prompt(
     let ats = crate::ats::detect(&job.url);
     let playbook = crate::ats::playbook(ats, settings.locale);
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let _ = std::fs::create_dir_all(&shots);
+    let shots_str = shots.to_string_lossy().to_string();
     Ok(prompts::apply_for_job(
         &job.title,
         &job.company,
@@ -92,6 +95,7 @@ pub fn approval_prompt(
         ats.name(),
         &playbook,
         &answers,
+        &shots_str,
         settings.locale,
     ))
 }
@@ -104,11 +108,15 @@ pub fn apply_by_url_prompt(
     settings: &Settings,
 ) -> Result<String, String> {
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let _ = std::fs::create_dir_all(&shots);
+    let shots_str = shots.to_string_lossy().to_string();
     Ok(prompts::apply_by_url(
         url,
         &settings.cv_file_path,
         &answers,
         settings.dry_run,
+        &shots_str,
         settings.locale,
     ))
 }

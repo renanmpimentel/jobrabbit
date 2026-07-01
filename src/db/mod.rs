@@ -193,18 +193,19 @@ impl Db {
         Ok(())
     }
 
-    /// Apaga os dados de execução (vagas, candidaturas, pendências, sessões e
-    /// feedback), numa transação atômica. Preserva perfil, variantes de busca,
-    /// respostas de triagem e dados de currículo (cv_reviews/cv_versions).
-    /// Permite recomeçar uma busca do zero. Idempotente.
+    /// Apaga os dados de execução (vagas não aplicadas, candidaturas não aplicadas, pendências,
+    /// sessões e feedback), numa transação atômica. Preserva perfil, variantes de busca,
+    /// respostas de triagem, dados de currículo (cv_reviews/cv_versions), e TODAS as vagas
+    /// e candidaturas com status='applied' (e seus screenshots). Permite recomeçar uma busca
+    /// do zero mantendo o histórico de aplicações bem-sucedidas. Idempotente.
     pub fn clear_runs(&self) -> Result<()> {
         self.conn.execute_batch(
             "BEGIN;
-             DELETE FROM applications;
+             DELETE FROM applications WHERE status != 'applied';
              DELETE FROM pending_actions;
              DELETE FROM sessions;
              DELETE FROM feedback;
-             DELETE FROM jobs;
+             DELETE FROM jobs WHERE NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = jobs.id AND a.status = 'applied');
              COMMIT;",
         )?;
         Ok(())
@@ -855,40 +856,58 @@ mod tests {
         db.set_answer("english_level", "English level", "advanced").unwrap();
         db.add_cv_review(82, "EM", "report").unwrap();
 
-        // Dados de execução que DEVEM ser apagados.
-        let job = db
+        // Applied job with screenshot — MUST be preserved.
+        let applied_job = db
+            .upsert_job(&NewJob {
+                title: "Senior Rust".into(),
+                url: "https://acme.jobs/applied-1".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        let app_id = db.add_application(applied_job, "applied", Some("applied-cv"), Some("applied-cover")).unwrap();
+        db.set_application_screenshot(applied_job, "/path/to/screenshot.png").unwrap();
+
+        // Non-applied job with execution data — MUST be deleted.
+        let non_applied_job = db
             .upsert_job(&NewJob {
                 title: "Rust Eng".into(),
                 url: "https://acme.jobs/1".into(),
                 ..Default::default()
             })
             .unwrap();
-        db.add_application(job, "applied", None, None).unwrap();
-        db.add_pending(Some(job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
+        db.add_application(non_applied_job, "ready", Some("draft-cv"), None).unwrap();
+        db.add_pending(Some(non_applied_job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
         db.start_session(Some("sess-1")).unwrap();
         db.add_feedback("summary", "suggestions").unwrap();
 
         db.clear_runs().unwrap();
 
-        // Execução: tudo vazio.
-        assert!(db.list_jobs().unwrap().is_empty());
-        assert!(db.list_applications().unwrap().is_empty());
-        assert!(db.list_pending(true).unwrap().is_empty());
-        assert!(db.list_sessions().unwrap().is_empty());
-        assert!(db.list_feedback().unwrap().is_empty());
+        // Non-applied execution data: all deleted.
+        let non_applied_jobs = db.list_jobs().unwrap();
+        assert_eq!(non_applied_jobs.len(), 1, "only applied job should remain");
+        assert_eq!(non_applied_jobs[0].url, "https://acme.jobs/applied-1");
 
-        // Preservado: intacto.
+        let all_apps = db.list_applications().unwrap();
+        assert_eq!(all_apps.len(), 1, "only applied application should remain");
+        assert_eq!(all_apps[0].id, app_id);
+        assert_eq!(all_apps[0].status, "applied");
+        assert_eq!(all_apps[0].screenshot_path, Some("/path/to/screenshot.png".to_string()), "screenshot_path must be preserved");
+
+        assert!(db.list_pending(true).unwrap().is_empty(), "all pending actions deleted");
+        assert!(db.list_sessions().unwrap().is_empty(), "all sessions deleted");
+        assert!(db.list_feedback().unwrap().is_empty(), "all feedback deleted");
+
+        // Profile and answers preserved.
         assert_eq!(db.get_profile().unwrap().background, "bg");
         assert_eq!(db.list_variants().unwrap().len(), 1);
-        // Answers are seeded with all canonical fields; set_answer updates one
-        // of them in place (english_level), so the seeded set is preserved intact.
         let answers = db.get_answers().unwrap();
         assert!(answers.len() > 1);
         assert!(answers.iter().any(|a| a.key == "english_level" && a.value == "advanced"));
         assert!(db.latest_cv_review().unwrap().is_some());
 
-        // Idempotente: rodar de novo num banco já limpo não falha.
+        // Idempotent: running again on a clean db does not fail.
         db.clear_runs().unwrap();
+        assert_eq!(db.list_jobs_applied().unwrap().len(), 1);
     }
 
     #[test]
