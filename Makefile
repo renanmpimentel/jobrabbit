@@ -1,9 +1,11 @@
 # jobRabbit — dev shortcuts (everything via Docker; the host needs no Rust/Node).
 
-.DEFAULT_GOAL := app
-.PHONY: app web-build web-install web-dev build test run tui snapshot release fmt clean shell
+.DEFAULT_GOAL := up
+.PHONY: up app web-build web-install web-dev build test run tui snapshot release fmt clean shell
 
-app:          ## Everything: test, build the frontend + binary and open the web UI
+up: run       ## Default: rebuild the frontend + run the web UI (the everyday command)
+
+app:          ## Full release flow: test, build the frontend + binary and open the web UI
 	@echo "🐇 jobRabbit — preparing everything..."
 	docker compose run --rm dev cargo test
 	./scripts/build-release.sh
@@ -28,7 +30,7 @@ test:         ## Run the test suite
 snapshot:     ## Render the TUI screens as text (preview without a TTY)
 	docker compose run --rm dev cargo run -- --tui --snapshot
 
-run:          ## Run the web UI (needs claude + Chrome on the host)
+run: web-build ## Run the web UI (rebuilds the embedded frontend first; needs claude + Chrome on the host)
 	docker compose run --rm --service-ports dev cargo run -- --web
 
 tui:          ## Run the classic TUI (needs a TTY)
