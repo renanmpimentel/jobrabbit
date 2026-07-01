@@ -3,7 +3,9 @@
 .DEFAULT_GOAL := up
 .PHONY: up app web-build web-install web-dev build test run tui snapshot release fmt clean shell
 
-up: run       ## Default: rebuild the frontend + run the web UI (the everyday command)
+up:           ## Default: rebuild the frontend + binary and launch the web UI on the host
+	./scripts/build-release.sh
+	./dist/jobrabbit
 
 app:          ## Full release flow: test, build the frontend + binary and open the web UI
 	@echo "🐇 jobRabbit — preparing everything..."
