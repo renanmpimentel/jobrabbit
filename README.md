@@ -17,7 +17,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-83%20passing-22c55e?style=flat-square)](#-validation)
+[![Tests](https://img.shields.io/badge/tests-113%20passing-22c55e?style=flat-square)](#-validation)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%C2%B7%20pt--BR-3178C6?style=flat-square)](#-languages--i18n)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-8b5cf6?style=flat-square)](#-contributing)
 [![Made with Claude Code](https://img.shields.io/badge/made%20with-Claude%20Code-D97757?style=flat-square&logo=anthropic&logoColor=white)](https://claude.com/claude-code)
@@ -29,13 +29,20 @@
 jobRabbit orchestrates the **Claude Code CLI** (`claude`) which, through the **Claude in
 Chrome** extension, browses job sites in your already-logged-in Chrome, scores each role's
 *fit* against your profile, generates a tailored CV / cover letter, and tries to apply —
-asking for your help (via a desktop notification) when it hits a captcha, a login, or a
-field it can't fill on its own.
+asking for your help (via an **in-app alert** and a desktop notification) when it hits a
+captcha, a login, or a field it can't fill on its own.
 
 It ships **two front-ends from a single Rust binary**: a polished **local web UI** (the
 default) and a classic **terminal UI** (`--tui`). Inspired by
 [claudia-rh](https://github.com/JohnGabie/claudia-rh) (Windows + Tauri/React); jobRabbit is
 a single Rust binary built for Linux.
+
+<div align="center">
+
+<img src="dashboard-light.png" width="49%" alt="Dashboard — light theme"> <img src="dashboard-dark.png" width="49%" alt="Dashboard — dark theme">
+<img src="session-light.png" width="49%" alt="Live execution session"> <img src="applications-light.png" width="49%" alt="Applications">
+
+</div>
 
 ## ✨ Features
 
@@ -47,7 +54,9 @@ a single Rust binary built for Linux.
 | 🎯 **Fit scoring** | Each job is scored 0.0–1.0 against your profile (seniority, stack, work model, requirements). |
 | 🧩 **ATS-aware playbooks** | Per-platform recipes (Gupy, LinkedIn, Greenhouse, Lever, Workday, generic) so the agent knows how to navigate each site. |
 | 🗂️ **Answer bank** | Reusable screening answers (salary expectation, notice period, work model, …) the agent uses to fill forms; learns new ones as it goes. |
-| ⚖️ **Apply modes** | `review` (prepare → you approve), `autonomous` (auto-apply on high fit), `hybrid` (auto above a threshold). Plus a global **dry-run**. |
+| ⚖️ **Apply modes** | `review` (prepare → you approve), `autonomous` (auto-apply on high fit), `hybrid` (auto above a threshold). Plus a global **dry-run** and a master **human-review** gate (on by default) that always stops for your approval before filling or submitting — even in autonomous/hybrid. |
+| 🔔 **Live pending alerts** | When the agent gets blocked (login, captcha, a screening question) you get an instant **in-app toast**, a **banner** on the Execution screen, and a **count badge** on Pending — plus the desktop notification. |
+| 📎 **Reliable upload** | Résumés are uploaded as a **PDF rendered from your CV**, so uploads never fail because the site can't take a `.docx`. |
 | 📊 **ATS résumé checker** | Score your CV 0–100 with an actionable report, generally or against a target job. |
 | 🌍 **Bilingual** | **English by default**, **pt-BR** selectable — UI *and* agent language. See [Languages & i18n](#-languages--i18n). |
 
@@ -135,7 +144,7 @@ Translations live in `web-ui/src/locales/{en,pt-BR}.json` and `src/locale.rs` +
 ## ✅ Validation
 
 ```bash
-make test                              # 83 tests (parser, DB, protocol, prompts, TUI)
+make test                              # 113 tests (parser, DB, protocol, prompts, sanitize, TUI)
 ./dist/jobrabbit --selftest-agent      # real E2E: runs claude (safe prompt, no browsing)
                                        # through the whole pipeline and checks SQLite
 ./dist/jobrabbit --snapshot            # preview the TUI screens as text (no TTY)

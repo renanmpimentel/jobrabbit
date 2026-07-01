@@ -17,7 +17,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![Licença: MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-22c55e?style=flat-square)](LICENSE)
-[![Testes](https://img.shields.io/badge/testes-83%20passando-22c55e?style=flat-square)](#-validação)
+[![Testes](https://img.shields.io/badge/testes-113%20passando-22c55e?style=flat-square)](#-validação)
 [![i18n](https://img.shields.io/badge/i18n-EN%20%C2%B7%20pt--BR-3178C6?style=flat-square)](#-idiomas--i18n)
 [![PRs bem-vindos](https://img.shields.io/badge/PRs-bem--vindos-8b5cf6?style=flat-square)](#-contribuindo)
 [![Feito com Claude Code](https://img.shields.io/badge/feito%20com-Claude%20Code-D97757?style=flat-square&logo=anthropic&logoColor=white)](https://claude.com/claude-code)
@@ -29,13 +29,20 @@
 O jobRabbit orquestra o **Claude Code CLI** (`claude`) que, através da extensão **Claude in
 Chrome**, navega em sites de vaga no seu Chrome já logado, avalia o *fit* de cada vaga
 contra o seu perfil, gera um CV / carta customizados e tenta se candidatar — pedindo a sua
-ajuda (via notificação no desktop) quando esbarra em captcha, login ou um campo que não sabe
-preencher sozinho.
+ajuda (via **alerta no app** e notificação no desktop) quando esbarra em captcha, login ou um
+campo que não sabe preencher sozinho.
 
 Ele entrega **dois front-ends a partir de um único binário Rust**: uma **UI web local**
 caprichada (o padrão) e uma **interface de terminal** clássica (`--tui`). Inspirado no
 [claudia-rh](https://github.com/JohnGabie/claudia-rh) (Windows + Tauri/React); o jobRabbit é
 um binário Rust único, feito para Linux.
+
+<div align="center">
+
+<img src="dashboard-light.png" width="49%" alt="Dashboard — tema claro"> <img src="dashboard-dark.png" width="49%" alt="Dashboard — tema escuro">
+<img src="session-light.png" width="49%" alt="Sessão de execução ao vivo"> <img src="applications-light.png" width="49%" alt="Vagas">
+
+</div>
 
 ## ✨ Funcionalidades
 
@@ -47,7 +54,9 @@ um binário Rust único, feito para Linux.
 | 🎯 **Avaliação de fit** | Cada vaga recebe nota 0.0–1.0 contra o seu perfil (senioridade, stack, modelo de trabalho, requisitos). |
 | 🧩 **Playbooks por ATS** | Receitas por plataforma (Gupy, LinkedIn, Greenhouse, Lever, Workday, genérico) para o agente saber navegar em cada site. |
 | 🗂️ **Banco de respostas** | Respostas de triagem reutilizáveis (pretensão salarial, aviso prévio, modelo de trabalho, …) que o agente usa para preencher formulários; aprende novas no caminho. |
-| ⚖️ **Modos de candidatura** | `review` (prepara → você aprova), `autonomous` (auto-candidata com fit alto), `hybrid` (auto acima de um limiar). Mais um **dry-run** global. |
+| ⚖️ **Modos de candidatura** | `review` (prepara → você aprova), `autonomous` (auto-candidata com fit alto), `hybrid` (auto acima de um limiar). Mais um **dry-run** global e uma trava mestra de **revisão humana** (ligada por padrão) que sempre para para sua aprovação antes de preencher ou enviar — mesmo em autonomous/hybrid. |
+| 🔔 **Alertas de pendência ao vivo** | Quando o agente trava (login, captcha, uma pergunta de triagem) você recebe um **toast no app**, um **banner** na tela de Execução e um **contador** na aba Pendências — além da notificação no desktop. |
+| 📎 **Upload confiável** | O currículo é enviado como **PDF renderizado do seu CV**, então uploads nunca falham porque o site não aceita `.docx`. |
 | 📊 **Avaliador de currículo (ATS)** | Dá nota 0–100 ao seu CV com um relatório acionável, geral ou contra uma vaga-alvo. |
 | 🌍 **Bilíngue** | **Inglês por padrão**, **pt-BR** selecionável — idioma da UI *e* do agente. Veja [Idiomas & i18n](#-idiomas--i18n). |
 
@@ -135,7 +144,7 @@ As traduções ficam em `web-ui/src/locales/{en,pt-BR}.json` e em `src/locale.rs
 ## ✅ Validação
 
 ```bash
-make test                              # 83 testes (parser, DB, protocolo, prompts, TUI)
+make test                              # 113 testes (parser, DB, protocolo, prompts, sanitize, TUI)
 ./dist/jobrabbit --selftest-agent      # E2E real: roda o claude (prompt seguro, sem
                                        # browsing) por todo o pipeline e confere o SQLite
 ./dist/jobrabbit --snapshot            # preview das telas como texto (sem TTY)
