@@ -15,6 +15,8 @@ import {
   Send,
   Sun,
   Moon,
+  Menu,
+  X,
 } from "lucide-react";
 import { AgentProvider, useAgent } from "./events";
 import { NavProvider } from "./nav";
@@ -49,39 +51,105 @@ function statusView(s: AgentStatus): { tone: "neon" | "warn" | "danger" | "muted
   return { tone: "danger", statusKey: "status.error", pulse: false };
 }
 
-function TabButton({ tab, isActive, onClick }: { tab: typeof TABS[0]; isActive: boolean; onClick: () => void }) {
+function SidebarNavItem({ tab, isActive, onClick }: { tab: typeof TABS[0]; isActive: boolean; onClick: () => void }) {
   const { t } = useTranslation();
   const Icon = tab.icon;
   return (
     <button
-      key={tab.id}
       onClick={onClick}
       className={cn(
-        "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-        isActive ? "text-accent" : "text-fg-muted hover:text-fg",
+        "relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+        isActive
+          ? "bg-accent/10 text-accent font-medium"
+          : "text-fg-muted hover:text-fg hover:bg-surface-2",
       )}
     >
+      <Icon size={18} className="shrink-0" />
+      <span>{t(tab.labelKey)}</span>
       {isActive && (
         <motion.span
-          layoutId="tab-pill"
-          className="absolute inset-0 rounded-lg bg-accent/10"
+          layoutId="sidebar-active"
+          className="absolute -left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent"
           transition={{ type: "spring", stiffness: 500, damping: 34 }}
         />
       )}
-      <span className="relative z-10 flex items-center gap-1.5">
-        <Icon size={15} /> {t(tab.labelKey)}
-      </span>
     </button>
   );
 }
 
-function Header({ active, setActive }: { active: string; setActive: (s: string) => void }) {
+function Sidebar({ active, setActive, open, setOpen }: { active: string; setActive: (s: string) => void; open: boolean; setOpen: (o: boolean) => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {/* Overlay for mobile */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="sidebar-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.aside
+        initial={{ x: -240 }}
+        animate={{ x: open ? 0 : -240 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen w-60 flex-col border-r border-border bg-surface lg:static lg:translate-x-0",
+          "lg:animate-none"
+        )}
+      >
+        {/* Brand */}
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-border bg-surface-2 text-base">
+            🐇
+          </span>
+          <span className="text-lg font-bold tracking-tight text-fg">
+            job<span className="text-accent">Rabbit</span>
+          </span>
+          <button
+            onClick={() => setOpen(false)}
+            className="ml-auto lg:hidden"
+            aria-label="Close sidebar"
+          >
+            <X size={20} className="text-fg-muted" />
+          </button>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scroll-thin">
+          {TABS.map((tab) => (
+            <SidebarNavItem
+              key={tab.id}
+              tab={tab}
+              isActive={active === tab.id}
+              onClick={() => {
+                setActive(tab.id);
+                setOpen(false); // Close sidebar on mobile after click
+              }}
+            />
+          ))}
+        </nav>
+      </motion.aside>
+    </>
+  );
+}
+
+function Topbar({ active, setActive, sidebarOpen, setSidebarOpen }: { active: string; setActive: (s: string) => void; sidebarOpen: boolean; setSidebarOpen: (o: boolean) => void }) {
   const { t } = useTranslation();
   const { status, connected } = useAgent();
   const invalidate = useInvalidate();
   const running = isRunning(status);
   const sv = statusView(status);
   const { theme, toggle } = useTheme();
+  const tab = TABS.find((t) => t.id === active) ?? TABS[0];
 
   async function run() {
     try {
@@ -94,64 +162,74 @@ function Header({ active, setActive }: { active: string; setActive: (s: string) 
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-xl border border-border bg-surface-2 text-base">
-            🐇
-          </span>
-          <span className="text-lg font-bold tracking-tight text-fg">
-            job<span className="text-accent">Rabbit</span>
-          </span>
+      <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        {/* Left: page title + hamburger */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden"
+            aria-label="Toggle sidebar"
+          >
+            <Menu size={20} className="text-fg-muted" />
+          </button>
+          <h1 className="text-[15px] font-semibold text-fg">{t(tab.labelKey)}</h1>
         </div>
 
-        <div className="ml-1 hidden sm:block" title={connected ? t("header.connected") : t("header.reconnecting")}>
-          <StatusPill tone={sv.tone} pulse={sv.pulse}>
-            {t(sv.statusKey)}
-          </StatusPill>
+        {/* Right: pills + buttons */}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block" title={connected ? t("header.connected") : t("header.reconnecting")}>
+            <StatusPill tone={sv.tone} pulse={sv.pulse}>
+              {t(sv.statusKey)}
+            </StatusPill>
+          </div>
+
+          <Button variant="ghost" onClick={toggle} aria-label="Toggle theme" size="sm">
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          </Button>
+
+          <Button variant="primary" onClick={run} disabled={running} size="sm">
+            {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+            <span className="hidden sm:inline">{running ? t("header.runningEllipsis") : t("header.runSearch")}</span>
+          </Button>
         </div>
-
-        <div className="flex-1" />
-
-        <Button variant="ghost" onClick={toggle} aria-label="Toggle theme">
-          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-        </Button>
-
-        <Button variant="primary" onClick={run} disabled={running}>
-          {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-          {running ? t("header.runningEllipsis") : t("header.runSearch")}
-        </Button>
       </div>
-
-      {/* Navigation */}
-      <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2 scroll-thin">
-        {TABS.map((tab) => (
-          <TabButton key={tab.id} tab={tab} isActive={active === tab.id} onClick={() => setActive(tab.id)} />
-        ))}
-      </nav>
     </header>
   );
 }
 
 function Shell() {
   const [active, setActive] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const tab = TABS.find((t) => t.id === active) ?? TABS[0];
+
   return (
     <NavProvider navigate={setActive}>
-      <div className="min-h-full bg-bg">
-        <Header active={active} setActive={setActive} />
-        <main className="mx-auto max-w-6xl px-4 py-7">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {tab.el}
-            </motion.div>
-          </AnimatePresence>
-        </main>
+      <div className="flex min-h-screen bg-bg">
+        {/* Sidebar */}
+        <Sidebar active={active} setActive={setActive} open={sidebarOpen} setOpen={setSidebarOpen} />
+
+        {/* Main area */}
+        <div className="flex flex-1 flex-col">
+          {/* Topbar */}
+          <Topbar active={active} setActive={setActive} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={active}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {tab.el}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
       </div>
     </NavProvider>
   );
