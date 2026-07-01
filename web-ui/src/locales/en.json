@@ -199,6 +199,16 @@
       "pending": "Pending",
       "failed": "Failed",
       "skipped": "Skipped"
+    },
+    "stageLabel": "Stage",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Add a note…",
+    "stage": {
+      "applied": "Applied",
+      "screening": "In review",
+      "interview": "Interview",
+      "offer": "Offer",
+      "rejected": "Rejected"
     }
   }
 }

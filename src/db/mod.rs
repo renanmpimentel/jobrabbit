@@ -39,6 +39,8 @@ impl Db {
         // Light migration for old DBs (ignores if column already exists).
         let _ = conn.execute("ALTER TABLE pending_actions ADD COLUMN field_key TEXT", []);
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN screenshot_path TEXT", []);
+        let _ = conn.execute("ALTER TABLE applications ADD COLUMN stage TEXT DEFAULT 'applied'", []);
+        let _ = conn.execute("ALTER TABLE applications ADD COLUMN notes TEXT", []);
         let db = Self { conn };
         db.migrate_answer_keys()?;
         db.seed_answers()?;
@@ -315,7 +317,7 @@ impl Db {
     /// Current application for a job (if any).
     pub fn application_for_job(&self, job_id: i64) -> Result<Option<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications WHERE job_id = ?1 ORDER BY id DESC LIMIT 1",
         )?;
         let app = stmt.query_row(params![job_id], Application::from_row).ok();
@@ -342,10 +344,19 @@ impl Db {
         Ok(())
     }
 
+    /// Updates the tracking stage and notes for an application by id.
+    pub fn set_application_tracking(&self, id: i64, stage: &str, notes: Option<&str>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE applications SET stage = ?1, notes = ?2 WHERE id = ?3",
+            params![stage, notes, id],
+        )?;
+        Ok(())
+    }
+
     /// Application by id.
     pub fn get_application(&self, id: i64) -> Result<Option<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications WHERE id = ?1",
         )?;
         Ok(stmt.query_row(params![id], Application::from_row).ok())
@@ -362,7 +373,7 @@ impl Db {
 
     pub fn list_applications(&self) -> Result<Vec<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications ORDER BY created_at DESC",
         )?;
         let rows = stmt
@@ -1019,5 +1030,34 @@ mod tests {
         // Verify get_application also returns it
         let app2 = db.get_application(app.id).unwrap().unwrap();
         assert_eq!(app2.screenshot_path.as_deref(), Some("/tmp/screenshot.png"));
+    }
+
+    #[test]
+    fn application_tracking_stage_and_notes() {
+        let db = Db::open_in_memory().unwrap();
+        let job_id = db
+            .upsert_job(&NewJob {
+                title: "Dev".into(),
+                url: "https://x/4".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        let app_id = db.add_application(job_id, "applied", None, None).unwrap();
+
+        // Set tracking stage and notes
+        db.set_application_tracking(app_id, "interview", Some("call on friday"))
+            .unwrap();
+
+        // Verify get_application returns both
+        let app = db.get_application(app_id).unwrap().unwrap();
+        assert_eq!(app.stage.as_deref(), Some("interview"));
+        assert_eq!(app.notes.as_deref(), Some("call on friday"));
+
+        // Update with notes=None
+        db.set_application_tracking(app_id, "offer", None)
+            .unwrap();
+        let app = db.get_application(app_id).unwrap().unwrap();
+        assert_eq!(app.stage.as_deref(), Some("offer"));
+        assert_eq!(app.notes, None);
     }
 }

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Send, ExternalLink, Loader2, Image } from "lucide-react";
 import { useStats, useApplications, useJobs, useAppliedJobs, useInvalidate, post } from "../hooks";
-import { Card, CardHeader, Badge, Empty, Input, Button, StatCard, cn } from "../ui";
+import { Card, CardHeader, Badge, Empty, Input, Button, StatCard, cn, Textarea } from "../ui";
 import { fadeUp, stagger } from "../motion";
 
 function statusTone(status: string): string {
@@ -11,6 +11,16 @@ function statusTone(status: string): string {
   if (status === "dry_run") return "yellow";
   if (status === "ready" || status === "pending") return "yellow";
   return "red";
+}
+
+function stageTone(stage: string | null | undefined): string {
+  if (!stage) stage = "applied";
+  if (stage === "applied") return "slate";
+  if (stage === "screening") return "yellow";
+  if (stage === "interview") return "iris";
+  if (stage === "offer") return "green";
+  if (stage === "rejected") return "red";
+  return "slate";
 }
 
 export default function Applications() {
@@ -24,6 +34,7 @@ export default function Applications() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<"available" | "applied">("available");
+  const [editingNotes, setEditingNotes] = useState<Record<number, string>>({});
 
   const apps = applications.data ?? [];
   const allJobs = jobs.data ?? [];
@@ -172,6 +183,7 @@ export default function Applications() {
                   <ul className="divide-y divide-edge">
                     {appJobs.map((job) => {
                       const app = appsByJobId.get(job.id);
+                      const noteValue = editingNotes[app?.id ?? 0] ?? (app?.notes ?? "");
                       return (
                         <motion.li
                           key={job.id}
@@ -219,6 +231,78 @@ export default function Applications() {
                                     month: "short",
                                     day: "numeric",
                                   })}
+                                </div>
+                              )}
+                              {app && (
+                                <div className="mt-3 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-xs text-fg-muted font-medium">
+                                      {t("applications.stageLabel")}:
+                                    </label>
+                                    <select
+                                      value={app.stage ?? "applied"}
+                                      onChange={(e) => {
+                                        post(`/applications/${app.id}/track`, {
+                                          stage: e.target.value,
+                                          notes: noteValue || null,
+                                        })
+                                          .then(() => invalidate())
+                                          .catch((e) => alert(String(e)));
+                                      }}
+                                      className="rounded-lg border border-edge bg-ink-850 px-2.5 py-1 text-xs text-fg outline-none transition focus:border-neon/50 focus:ring-2 focus:ring-neon/15"
+                                    >
+                                      <option value="applied">
+                                        {t("applications.stage.applied")}
+                                      </option>
+                                      <option value="screening">
+                                        {t("applications.stage.screening")}
+                                      </option>
+                                      <option value="interview">
+                                        {t("applications.stage.interview")}
+                                      </option>
+                                      <option value="offer">
+                                        {t("applications.stage.offer")}
+                                      </option>
+                                      <option value="rejected">
+                                        {t("applications.stage.rejected")}
+                                      </option>
+                                    </select>
+                                    <Badge tone={stageTone(app.stage)}>
+                                      {t(`applications.stage.${app.stage ?? "applied"}`)}
+                                    </Badge>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-fg-muted font-medium block mb-1">
+                                      {t("applications.notesLabel")}
+                                    </label>
+                                    <Textarea
+                                      value={noteValue}
+                                      onChange={(e) => {
+                                        setEditingNotes({
+                                          ...editingNotes,
+                                          [app.id]: e.target.value,
+                                        });
+                                      }}
+                                      onBlur={() => {
+                                        post(`/applications/${app.id}/track`, {
+                                          stage: app.stage ?? "applied",
+                                          notes: noteValue || null,
+                                        })
+                                          .then(() => {
+                                            invalidate();
+                                            setEditingNotes((prev) => {
+                                              const next = { ...prev };
+                                              delete next[app.id];
+                                              return next;
+                                            });
+                                          })
+                                          .catch((e) => alert(String(e)));
+                                      }}
+                                      placeholder={t("applications.notesPlaceholder")}
+                                      className="text-xs resize-none"
+                                      rows={2}
+                                    />
+                                  </div>
                                 </div>
                               )}
                               {app?.screenshot_path && (

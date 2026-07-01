@@ -36,6 +36,8 @@ export interface Application {
   cv_generated: string | null;
   cover_letter: string | null;
   screenshot_path: string | null;
+  stage: string | null;
+  notes: string | null;
   created_at: string;
 }
 

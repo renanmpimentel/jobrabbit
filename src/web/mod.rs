@@ -184,6 +184,7 @@ fn router(state: AppState) -> Router {
         .route("/api/pending/:id/resolve", post(resolve_pending))
         .route("/api/pending/:id/approve", post(approve_pending))
         .route("/api/pending/:id/answer", post(answer_pending))
+        .route("/api/applications/:id/track", post(post_application_track))
         // Real-time
         .route("/api/events", get(sse_events))
         // Embedded frontend (SPA): any non-API route falls through to static_handler.
@@ -622,6 +623,12 @@ async fn approve_pending(
 struct PendingAnswerBody {
     value: String,
 }
+
+#[derive(Deserialize)]
+struct TrackBody {
+    stage: String,
+    notes: Option<String>,
+}
 async fn answer_pending(
     State(s): State<AppState>,
     Path(id): Path<i64>,
@@ -769,6 +776,23 @@ async fn post_session_continue(
         s.agent_tx.clone(),
     );
 
+    Ok(ok())
+}
+
+async fn post_application_track(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<TrackBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    // Validate stage is one of the allowed values
+    let valid_stages = ["applied", "screening", "interview", "offer", "rejected"];
+    if !valid_stages.contains(&body.stage.as_str()) {
+        return Err((StatusCode::BAD_REQUEST, "invalid stage".into()));
+    }
+
+    let db = s.db.lock().unwrap();
+    db.set_application_tracking(id, &body.stage, body.notes.as_deref())
+        .map_err(internal)?;
     Ok(ok())
 }
 
