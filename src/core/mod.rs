@@ -10,6 +10,7 @@
 pub mod actions;
 pub mod doctor;
 pub mod persist;
+pub mod sanitize;
 
 /// Agent execution state. Shared by the TUI and web.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

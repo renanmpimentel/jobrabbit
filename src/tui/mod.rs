@@ -53,6 +53,7 @@ pub enum SettingKind {
     CvPath,
     ClaudeBin,
     ApplyMode,
+    RequireHumanReview,
     LanguageFilter,
     Locale,
     HybridThreshold,
@@ -63,11 +64,12 @@ pub enum SettingKind {
     AutoRunIdle,
 }
 
-pub const SETTING_KINDS: [SettingKind; 12] = [
+pub const SETTING_KINDS: [SettingKind; 13] = [
     SettingKind::LinkedinUrl,
     SettingKind::CvPath,
     SettingKind::ClaudeBin,
     SettingKind::ApplyMode,
+    SettingKind::RequireHumanReview,
     SettingKind::LanguageFilter,
     SettingKind::Locale,
     SettingKind::HybridThreshold,
@@ -85,6 +87,7 @@ impl SettingKind {
             SettingKind::CvPath => "CV path (upload)",
             SettingKind::ClaudeBin => "claude binary",
             SettingKind::ApplyMode => "Apply mode",
+            SettingKind::RequireHumanReview => "Human review before filling",
             SettingKind::LanguageFilter => "Filter jobs by language",
             SettingKind::Locale => "Language",
             SettingKind::HybridThreshold => "Hybrid threshold (fit)",
@@ -104,6 +107,7 @@ impl SettingKind {
                 | SettingKind::BypassPermissions
                 | SettingKind::AutoRunIdle
                 | SettingKind::LanguageFilter
+                | SettingKind::RequireHumanReview
         )
     }
 
@@ -131,6 +135,7 @@ impl SettingKind {
             SettingKind::CvPath => s.cv_file_path.clone(),
             SettingKind::ClaudeBin => s.claude_bin.clone(),
             SettingKind::ApplyMode => s.apply_mode.clone(),
+            SettingKind::RequireHumanReview => bool_str(s.require_human_review),
             SettingKind::LanguageFilter => bool_str(s.language_filter),
             SettingKind::Locale => s.locale.label().to_string(),
             SettingKind::HybridThreshold => format!("{:.2}", s.hybrid_threshold),
@@ -149,6 +154,7 @@ impl SettingKind {
             SettingKind::BypassPermissions => s.bypass_permissions = !s.bypass_permissions,
             SettingKind::AutoRunIdle => s.auto_run_on_idle = !s.auto_run_on_idle,
             SettingKind::LanguageFilter => s.language_filter = !s.language_filter,
+            SettingKind::RequireHumanReview => s.require_human_review = !s.require_human_review,
             SettingKind::Locale => s.cycle_locale(),
             SettingKind::ApplyMode => s.cycle_apply_mode(),
             _ => {}
@@ -1184,8 +1190,9 @@ mod tests {
         let mut app = App::new(&db).unwrap();
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 5;
-        // DryRun is index 7 in SETTING_KINDS (after LanguageFilter at 4 and Locale at 5).
-        app.config_sel = 7;
+        // DryRun is index 8 in SETTING_KINDS (after ApplyMode=3, RequireHumanReview=4,
+        // LanguageFilter=5, Locale=6, HybridThreshold=7).
+        app.config_sel = 8;
         let before = app.settings.dry_run;
         app.on_key(key(' '), &tx, &db);
         assert_eq!(app.settings.dry_run, !before);

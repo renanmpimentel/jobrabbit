@@ -41,6 +41,15 @@ use crate::db::models::{
 use crate::db::Db;
 use crate::event::AppEvent;
 
+/// A pending action that just needs the user's attention, forwarded to the UI
+/// so it can raise an in-app alert (toast/banner) even while the user is on the
+/// execution screen. Present only on the SSE event that created the pending.
+#[derive(Clone, Serialize)]
+struct PendingNotify {
+    kind: String,
+    description: String,
+}
+
 /// Envelope sent by SSE: the persistence result + event name.
 /// The UI uses `logs` for the Session panel, `status` for the agent indicator, and
 /// `refresh` to re-query the lists (jobs, pending, etc.).
@@ -51,6 +60,8 @@ struct WebEvent {
     status: Option<AgentStatus>,
     focus_tab: Option<usize>,
     refresh: bool,
+    /// Set when this event created a pending action requiring the user.
+    notify: Option<PendingNotify>,
 }
 
 /// State shared among handlers. `Clone` is cheap (everything is `Arc`).
@@ -113,15 +124,22 @@ pub async fn serve(db: Db, port: u16) -> Result<()> {
                         log.drain(0..len - 2000);
                     }
                 }
-                if let Some((kind, desc)) = &out.notify {
+                let notify = out.notify.as_ref().map(|(kind, desc)| {
+                    // Best-effort desktop notification (helps when the window is
+                    // unfocused); the same payload also drives the in-app alert.
                     crate::platform::notify::pending(kind, desc);
-                }
+                    PendingNotify {
+                        kind: kind.clone(),
+                        description: desc.clone(),
+                    }
+                });
                 let _ = state.events.send(WebEvent {
                     event: name.to_string(),
                     logs: out.logs,
                     status: out.status,
                     focus_tab: out.focus_tab,
                     refresh: out.refresh,
+                    notify,
                 });
             }
         });

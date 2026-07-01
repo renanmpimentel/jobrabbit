@@ -115,7 +115,12 @@ impl Db {
     }
 
     /// Sets/updates an answer (creates record if key is new).
+    ///
+    /// The value is sanitized before persisting: answers are later typed
+    /// verbatim into real form fields, so transcript metadata and accidental
+    /// duplication must never be stored.
     pub fn set_answer(&self, key: &str, label: &str, value: &str) -> Result<()> {
+        let value = crate::core::sanitize::sanitize_answer_value(value);
         self.conn.execute(
             "INSERT INTO answers (key, label, value, updated_at) VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(key) DO UPDATE SET value = ?3, updated_at = ?4,
@@ -615,6 +620,19 @@ mod tests {
         // upsert updates, doesn't duplicate
         db.save_profile("bg2", "cv2").unwrap();
         assert_eq!(db.get_profile().unwrap().background, "bg2");
+    }
+
+    #[test]
+    fn set_answer_sanitizes_value() {
+        let db = Db::open_in_memory().unwrap();
+        db.set_answer(
+            "motivation",
+            "Motivation",
+            "05:57▮▮▮Claude responded: Me motiva liderar times. Me motiva liderar times.",
+        )
+        .unwrap();
+        let map = db.answers_map().unwrap();
+        assert_eq!(map["motivation"], "Me motiva liderar times.");
     }
 
     #[test]

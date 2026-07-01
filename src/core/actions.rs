@@ -44,6 +44,7 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
                 v,
                 &mode,
                 settings.dry_run,
+                settings.require_human_review,
                 settings.hybrid_threshold,
                 settings.locale,
                 settings.language_filter,
@@ -51,6 +52,29 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
             )
         })
         .collect())
+}
+
+/// Résumé file for UPLOAD — always a format the Chrome upload tool can handle.
+///
+/// The upload tool cannot select `.docx`, and the system can render the CV in any
+/// format, so uploads must never fail for format reasons. If the configured
+/// `cv_file_path` is already a PDF, use it; otherwise render a PDF from the CV
+/// markdown (`cv_content`) to a stable path and upload that. Falls back to the
+/// configured path when there is no content to render.
+fn upload_cv_path(settings: &Settings, cv_content: &str) -> String {
+    if settings.cv_file_path.to_lowercase().ends_with(".pdf") {
+        return settings.cv_file_path.clone();
+    }
+    let content = cv_content.trim();
+    if !content.is_empty() {
+        if let Ok(dir) = config::data_dir() {
+            let dest = dir.join("resume-current.pdf");
+            if crate::export::write_pdf_file(content, &dest).is_ok() {
+                return dest.to_string_lossy().to_string();
+            }
+        }
+    }
+    settings.cv_file_path.clone()
 }
 
 /// Prompt to ACTUALLY SUBMIT an approved application (item `approval`).
@@ -85,13 +109,21 @@ pub fn approval_prompt(
     let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
     let _ = std::fs::create_dir_all(&shots);
     let shots_str = shots.to_string_lossy().to_string();
+    // Upload a PDF the Chrome tool can handle (rendered from the approved CV,
+    // falling back to the base CV) instead of the raw configured file.
+    let cv_source = if !cv.trim().is_empty() {
+        cv.clone()
+    } else {
+        db.get_profile().unwrap_or_default().cv_base
+    };
+    let cv_upload = upload_cv_path(settings, &cv_source);
     Ok(prompts::apply_for_job(
         &job.title,
         &job.company,
         &job.url,
         &cv,
         &cover,
-        &settings.cv_file_path,
+        &cv_upload,
         ats.name(),
         &playbook,
         &answers,
@@ -111,11 +143,15 @@ pub fn apply_by_url_prompt(
     let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
     let _ = std::fs::create_dir_all(&shots);
     let shots_str = shots.to_string_lossy().to_string();
+    // Upload a PDF (rendered from the base CV) that the Chrome tool can handle.
+    let profile = db.get_profile().unwrap_or_default();
+    let cv_upload = upload_cv_path(settings, &profile.cv_base);
     Ok(prompts::apply_by_url(
         url,
-        &settings.cv_file_path,
+        &cv_upload,
         &answers,
         settings.dry_run,
+        settings.require_human_review,
         &shots_str,
         settings.locale,
     ))

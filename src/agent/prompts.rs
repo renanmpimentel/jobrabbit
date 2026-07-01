@@ -38,6 +38,42 @@ fn profile_block(profile: &Profile, locale: Locale) -> String {
     }
 }
 
+/// Shared guidance: generate the CV tailored to THIS job and optimized for the
+/// ATS + AI screening most sites use — maximizing keyword/requirement match,
+/// truthfully (never inventing experience).
+fn cv_ats_guidance(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => "## CV tailoring for ATS/AI screening (be assertive — most sites screen with ATS + AI)\n\
+             Generate the CV SPECIFICALLY for THIS job to maximize the match:\n\
+             - Extract the job's key requirements, skills, tools and KEYWORDS from the description and mirror\n\
+               that exact terminology (tech names, seniority, domain) in the CV — TRUTHFULLY, from the\n\
+               candidate's real profile/answer bank. NEVER invent experience or skills the candidate lacks.\n\
+             - Put the most relevant experience and matching keywords FIRST; align the headline/summary to the role title.\n\
+             - Quantify impact (metrics, %, scale) and use strong action verbs.\n\
+             - Use an ATS-friendly PLAIN structure: standard headings (Summary, Experience, Skills, Education),\n\
+               simple bullets, NO tables/columns/graphics/text-boxes/headers-footers (ATS parsers drop those).\n\
+             - Cover the role's must-have keywords the candidate genuinely has; if a required skill is missing\n\
+               from the profile, do NOT fake it — emphasize the closest real, transferable experience.\n\
+             - Before finalizing, SELF-CHECK the CV against the job as an ATS would: estimate keyword/requirement\n\
+               coverage and iterate once to raise it. Aim for high, honest alignment.\n\n"
+            ,
+        Locale::PtBr => "## Currículo otimizado para ATS/IA (seja assertivo — a maioria dos sites filtra com ATS + IA)\n\
+             Gere o CV ESPECIFICAMENTE para ESTA vaga para maximizar o match:\n\
+             - Extraia da descrição os requisitos, skills, ferramentas e PALAVRAS-CHAVE principais e espelhe\n\
+               essa terminologia exata (nomes de tecnologias, senioridade, domínio) no CV — de forma VERDADEIRA,\n\
+               a partir do perfil/answer bank reais do candidato. NUNCA invente experiência ou skills que não existem.\n\
+             - Coloque PRIMEIRO a experiência mais relevante e as palavras-chave que casam; alinhe o headline/resumo ao título da vaga.\n\
+             - Quantifique impacto (métricas, %, escala) e use verbos de ação fortes.\n\
+             - Use estrutura SIMPLES amigável a ATS: seções padrão (Resumo, Experiência, Skills, Formação),\n\
+               bullets simples, SEM tabelas/colunas/gráficos/caixas de texto/cabeçalho-rodapé (o ATS descarta isso).\n\
+             - Cubra as palavras-chave obrigatórias que o candidato realmente tem; se faltar uma skill exigida,\n\
+               NÃO finja — destaque a experiência real transferível mais próxima.\n\
+             - Antes de finalizar, AUTO-AVALIE o CV contra a vaga como um ATS faria: estime a cobertura de\n\
+               requisitos/palavras-chave e itere uma vez para aumentá-la. Busque alta aderência honesta.\n\n"
+            ,
+    }
+}
+
 /// Prompt for a search round: find jobs for a variant and evaluate fit.
 ///
 /// The agent should use Chrome (already logged in) to search and, for each
@@ -48,6 +84,7 @@ pub fn search_and_evaluate(
     variant: &SearchVariant,
     apply_mode: &str,
     dry_run: bool,
+    require_human_review: bool,
     hybrid_threshold: f64,
     locale: Locale,
     language_filter: bool,
@@ -60,6 +97,14 @@ pub fn search_and_evaluate(
                 "## SIMULATION MODE (dry-run)\n\
                  Do NOT submit ANY application and do NOT modify the sites (don't click submit/apply).\n\
                  Only search, evaluate and generate CV/cover letter. Report each job with status \"dry_run\"."
+                    .to_string()
+            } else if require_human_review {
+                "## Policy: HUMAN REVIEW (safety gate — on by default, overrides the apply mode)\n\
+                 Do NOT fill or submit ANY form on a job site, regardless of the fit score.\n\
+                 For fit >= 0.7: generate the CV/cover letter and report status \"ready\" so the user\n\
+                 can review the GENERATED CONTENT and approve it. Only AFTER the user approves will you\n\
+                 fill and submit (the user's own identity data from the answer bank is filled at that\n\
+                 later stage, without extra approval). Blockers (captcha/login/field) → report pending."
                     .to_string()
             } else {
                 match apply_mode {
@@ -118,6 +163,7 @@ pub fn search_and_evaluate(
                  {policy}\n\n\
                  {language}\
                  {work_model}\
+                 {cv_guidance}\
                  ## CV/cover letter language\n\
                  When you generate a CV or cover letter for a job, write it in the LANGUAGE OF THE JOB\n\
                  DESCRIPTION (detect it per job), NOT the UI language.\n\n\
@@ -137,6 +183,7 @@ pub fn search_and_evaluate(
                 policy = policy,
                 language = language,
                 work_model = work_model_section,
+                cv_guidance = cv_ats_guidance(locale),
             )
         }
         Locale::PtBr => {
@@ -145,6 +192,14 @@ pub fn search_and_evaluate(
                 "## MODO SIMULAÇÃO (dry-run)\n\
                  NÃO submeta NENHUMA candidatura e NÃO altere os sites (não clique em enviar/aplicar).\n\
                  Apenas busque, avalie e gere CV/carta. Reporte cada vaga com status \"dry_run\"."
+                    .to_string()
+            } else if require_human_review {
+                "## Política: REVISÃO HUMANA (trava de segurança — ligada por padrão, tem prioridade sobre o modo)\n\
+                 NÃO preencha nem submeta NENHUM formulário em site de vaga, independente do fit.\n\
+                 Para fit >= 0.7: gere o CV/carta e reporte status \"ready\" para o usuário revisar o\n\
+                 CONTEÚDO GERADO e aprovar. Só DEPOIS da aprovação você vai preencher e submeter (os\n\
+                 dados de identidade do próprio usuário, do answer bank, são preenchidos nessa etapa\n\
+                 posterior, sem aprovação extra). Bloqueios (captcha/login/campo) → reporte pending."
                     .to_string()
             } else {
                 match apply_mode {
@@ -203,6 +258,7 @@ pub fn search_and_evaluate(
                  {politica}\n\n\
                  {idioma}\
                  {modelo_trabalho}\
+                 {cv_guidance}\
                  ## Idioma do CV/carta\n\
                  Ao gerar um CV ou carta de apresentação para uma vaga, escreva-o no IDIOMA DA\n\
                  DESCRIÇÃO DA VAGA (detecte por vaga), NÃO no idioma da UI.\n\n\
@@ -221,6 +277,7 @@ pub fn search_and_evaluate(
                 query = variant.query,
                 idioma = idioma,
                 modelo_trabalho = modelo_trabalho,
+                cv_guidance = cv_ats_guidance(locale),
             )
         }
     }
@@ -242,9 +299,33 @@ pub fn answers_block(map: &std::collections::HashMap<String, String>, locale: Lo
     keys.sort();
     let mut out = String::new();
     for k in keys {
-        out.push_str(&format!("- {k}: {}\n", map[k]));
+        // Defense in depth: values are sanitized on write, but banks populated
+        // before that existed may still hold transcript metadata/duplication.
+        let v = crate::core::sanitize::sanitize_answer_value(&map[k]);
+        // Keep each entry on a single line so the prompt's list format holds.
+        let v = v.replace('\n', " ");
+        out.push_str(&format!("- {k}: {v}\n"));
     }
     out
+}
+
+/// Field-filling hygiene rules shared by the application prompts.
+///
+/// Guards against two observed failure modes: transcript metadata leaking into
+/// a field, and the same text being typed twice.
+fn fill_hygiene(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => {
+            "- Before typing into ANY text field, CLEAR it first (click it, select all with Ctrl+A, delete) — NEVER append to existing content.\n\
+             - Type ONLY the pure answer text. NEVER include timestamps, log markers or labels such as \"Claude responded:\" — if a bank value carries such junk, strip it before typing.\n\
+             - Fill each field EXACTLY ONCE. For long text fields (textareas), after typing re-read the field's value on the page; if it is duplicated or contains metadata, clear it and retype the clean text a single time.\n"
+        }
+        Locale::PtBr => {
+            "- Antes de digitar em QUALQUER campo de texto, LIMPE o campo primeiro (clique nele, selecione tudo com Ctrl+A, apague) — NUNCA faça append a conteúdo existente.\n\
+             - Digite APENAS o texto puro da resposta. NUNCA inclua timestamps, marcadores de log ou rótulos como \"Claude responded:\" — se um valor do banco vier com esse lixo, remova antes de digitar.\n\
+             - Preencha cada campo EXATAMENTE UMA VEZ. Em campos longos (textareas), após digitar releia o valor do campo na página; se estiver duplicado ou com metadado, limpe e redigite o texto correto uma única vez.\n"
+        }
+    }
 }
 
 /// Prompt to apply for a job by pasting its URL (standalone flow).
@@ -257,11 +338,17 @@ pub fn apply_by_url(
     cv_file_path: &str,
     answers: &str,
     dry_run: bool,
+    require_human_review: bool,
     screenshot_dir: &str,
     locale: Locale,
 ) -> String {
+    // Precedence: dry_run > require_human_review (safety gate) > live.
     let dry_run_hint = if dry_run {
         "\n- DRY-RUN MODE: simulate the entire flow but do NOT submit (status: \"dry_run\")."
+    } else if require_human_review {
+        "\n- REVIEW MODE (human approval required): do NOT fill or submit ANYTHING on the site. \
+         Just generate the CV and cover letter and report status \"ready\" WITH the `cv` and `cover` \
+         fields so the user can review the content and approve. Only after approval will the form be filled."
     } else {
         "\n- LIVE MODE: submit the application after confirming it looks good."
     };
@@ -276,6 +363,9 @@ pub fn apply_by_url(
              (use Chrome's file-upload tool to select it)."
         )
     };
+
+    let cv_guidance = cv_ats_guidance(locale);
+    let hygiene = fill_hygiene(locale);
 
     match locale {
         Locale::En => {
@@ -293,13 +383,17 @@ pub fn apply_by_url(
                  5. Detect the ATS platform from the page (inHire, LinkedIn, LinkedIn Jobs, etc.)\n\
                  6. Evaluate the job fit based on requirements vs. the candidate's profile.\n\
                  7. {dry_run_hint}\n\
-                 8. If not dry-run, complete the full application flow per the platform playbook.\n\
+                 8. Follow the mode above: LIVE → complete the full application flow per the platform playbook;\n\
+                    REVIEW → do NOT fill or submit — report status \"ready\" with the `cv` and `cover` fields;\n\
+                    DRY-RUN → simulate only.\n\
                  9. After you see the explicit submission confirmation, take a screenshot of the confirmation with the Claude-in-Chrome screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
+                 {cv_guidance}\
                  ## Candidate answer bank (use it to fill the fields)\n{answers}\n\n\
                  ## Execution rules\n\
                  - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
                  - Drive the WHOLE flow per the ATS playbook, even multi-step (\"Next/Continue\").\n\
                  - Fill the fields with the answer bank, the CV/cover letter and the profile.\n\
+                 {hygiene}\
                  - {file_block}\n\
                  - If a REQUIRED answer is missing and not in the bank (e.g. salary expectation),\n\
                    do NOT make it up: report `pending kind=\"answer_needed\"` with `field_key` (a short, stable\n\
@@ -316,6 +410,7 @@ pub fn apply_by_url(
                  - Job extraction: {{\"type\":\"job\",\"url\":\"{url}\",\"title\":\"...\",\"company\":\"...\",\"detected_language\":\"en|pt|...\"}}\n\
                  - Submitted & CONFIRMED: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
                  - With screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/absolute/path/to/screenshot.png\"}}\n\
+                 - Ready for human review (REVIEW mode): {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"ready\",\"cv\":\"<generated cv>\",\"cover\":\"<cover letter>\"}}\n\
                  - Dry-run: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"dry_run\"}}\n\
                  - Missing answer: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"What is your salary expectation?\"}}\n\
                  - Blocker: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"what's missing\"}}\n\
@@ -338,13 +433,17 @@ pub fn apply_by_url(
                  5. Detecte a plataforma ATS na página (inHire, LinkedIn, LinkedIn Jobs, etc.)\n\
                  6. Avalie o fit da vaga com base nos requisitos vs. perfil do candidato.\n\
                  7. {dry_run_hint}\n\
-                 8. Se não for dry-run, complete o fluxo completo de candidatura por playbook.\n\
+                 8. Siga o modo acima: LIVE → complete o fluxo completo de candidatura por playbook;\n\
+                    REVIEW → NÃO preencha nem submeta — reporte status \"ready\" com os campos `cv` e `cover`;\n\
+                    DRY-RUN → apenas simule.\n\
                  9. Após confirmação, capture uma screenshot e inclua seu caminho absoluto.\n\n\
+                 {cv_guidance}\
                  ## Banco de respostas do candidato (use para preencher os campos)\n{answers}\n\n\
                  ## Regras de execução\n\
                  - SEMPRE use a integração **Claude in Chrome** (Chrome real logado). NUNCA use Playwright.\n\
                  - Execute o FLUXO INTEIRO per o playbook ATS, mesmo multi-step (\"Próximo/Continuar\").\n\
                  - Preencha os campos com o banco de respostas, CV/carta e perfil.\n\
+                 {hygiene}\
                  - {file_block}\n\
                  - Se uma resposta OBRIGATÓRIA estiver faltando e não estiver no banco (ex: expectativa salarial),\n\
                    NÃO invente: reporte `pending kind=\"answer_needed\"` com `field_key` (slug curto e estável,\n\
@@ -365,6 +464,7 @@ pub fn apply_by_url(
                  - Extração de vaga: {{\"type\":\"job\",\"url\":\"{url}\",\"title\":\"...\",\"company\":\"...\",\"detected_language\":\"en|pt|...\"}}\n\
                  - Submetido & CONFIRMADO: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
                  - Com screenshot: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\",\"screenshot\":\"/absolute/path/to/screenshot.png\"}}\n\
+                 - Pronto para revisão humana (modo REVIEW): {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"ready\",\"cv\":\"<cv gerado>\",\"cover\":\"<carta>\"}}\n\
                  - Dry-run: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"dry_run\"}}\n\
                  - Resposta faltando: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"answer_needed\",\"field_key\":\"salary_expectation\",\"description\":\"Qual sua expectativa salarial?\"}}\n\
                  - Bloqueador: {{\"type\":\"pending\",\"url\":\"{url}\",\"kind\":\"login|captcha|required_field\",\"description\":\"o que falta\"}}\n\
@@ -391,6 +491,7 @@ pub fn apply_for_job(
     screenshot_dir: &str,
     locale: Locale,
 ) -> String {
+    let hygiene = fill_hygiene(locale);
     match locale {
         Locale::En => {
             let file_block = if cv_file_path.is_empty() {
@@ -415,6 +516,7 @@ pub fn apply_for_job(
                  - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
                  - Drive the WHOLE flow per the playbook, even multi-step (\"Next/Continue\").\n\
                  - Fill the fields with the answer bank, the CV/cover letter and the profile.\n\
+                 {hygiene}\
                  - {file_block}\n\
                  - If a REQUIRED answer is missing and not in the bank (e.g. salary expectation),\n\
                    do NOT make it up: report `pending kind=\"answer_needed\"` with `field_key` (a short, stable\n\
@@ -462,6 +564,7 @@ pub fn apply_for_job(
                  - Use SEMPRE a integração **Claude in Chrome** (Chrome REAL logado). NUNCA use Playwright.\n\
                  - Conduza TODO o fluxo conforme o playbook, mesmo multi-etapas (\"Próximo/Next/Continuar\").\n\
                  - Preencha os campos com o banco de respostas, o CV/carta e o perfil.\n\
+                 {hygiene}\
                  - {bloco_arquivo}\n\
                  - Se faltar uma resposta OBRIGATÓRIA que não está no banco (ex.: pretensão salarial),\n\
                    NÃO invente: reporte `pending kind=\"answer_needed\"` com `field_key` (slug curto e\n\
@@ -942,6 +1045,7 @@ mod tests {
             &v,
             "review",
             false,
+            false,
             0.9,
             Locale::En,
             false,
@@ -969,6 +1073,7 @@ mod tests {
             &v,
             "review",
             false,
+            false,
             0.9,
             Locale::En,
             false,
@@ -980,6 +1085,7 @@ mod tests {
             &sample_profile(),
             &v,
             "review",
+            false,
             false,
             0.9,
             Locale::En,
@@ -994,6 +1100,7 @@ mod tests {
             &sample_profile(),
             &v,
             "review",
+            false,
             false,
             0.9,
             Locale::PtBr,
@@ -1018,6 +1125,7 @@ mod tests {
             &v,
             "review",
             false,
+            false,
             0.9,
             Locale::En,
             false,
@@ -1030,6 +1138,7 @@ mod tests {
             &sample_profile(),
             &v,
             "review",
+            false,
             false,
             0.9,
             Locale::PtBr,
@@ -1053,6 +1162,7 @@ mod tests {
             &v,
             "review",
             false,
+            false,
             0.9,
             Locale::En,
             false,
@@ -1065,6 +1175,7 @@ mod tests {
             &sample_profile(),
             &v,
             "autonomous",
+            false,
             false,
             0.9,
             Locale::En,
@@ -1079,6 +1190,7 @@ mod tests {
             &v,
             "autonomous",
             true,
+            false,
             0.9,
             Locale::En,
             false,
@@ -1116,6 +1228,45 @@ mod tests {
             apply.contains("CPF"),
             "must include the identity-data fill policy"
         );
+    }
+
+    #[test]
+    fn human_review_overrides_apply_mode() {
+        let v = SearchVariant {
+            id: 1,
+            label: "L".into(),
+            query: "q".into(),
+            enabled: true,
+            created_at: "x".into(),
+        };
+        // Even with apply_mode="autonomous", require_human_review=true forces the review gate.
+        let gated = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "autonomous",
+            false,
+            true, // require_human_review
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+        );
+        assert!(gated.contains("HUMAN REVIEW"), "gate must force human-review policy");
+        assert!(!gated.contains("## Policy: AUTONOMOUS"), "autonomous policy must be suppressed");
+        assert!(gated.contains("\"ready\""), "must instruct reporting ready for approval");
+
+        // apply_by_url in REVIEW mode must instruct not to submit and to report ready.
+        let by_url = apply_by_url(
+            "https://example.com/job/1",
+            "/cv.pdf",
+            "- english_level: advanced\n",
+            false, // dry_run
+            true,  // require_human_review
+            "/tmp/shots",
+            Locale::En,
+        );
+        assert!(by_url.contains("REVIEW MODE"), "apply-by-url must enter review mode");
+        assert!(by_url.contains("\"ready\""), "apply-by-url review must report ready with cv/cover");
     }
 
     #[test]
@@ -1162,9 +1313,9 @@ mod tests {
             enabled: true,
             created_at: "x".into(),
         };
-        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::PtBr, false, "remote");
+        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::PtBr, false, "remote");
         assert!(pt.contains("IDIOMA DA"), "search flow must generate CV/cover in the job's language");
-        let en = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::En, false, "remote");
+        let en = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote");
         assert!(en.contains("LANGUAGE OF THE JOB"));
     }
 
@@ -1176,6 +1327,31 @@ mod tests {
         let b = answers_block(&m, Locale::En);
         assert!(b.contains("english_level: advanced"));
         assert!(answers_block(&HashMap::new(), Locale::En).contains("empty"));
+    }
+
+    #[test]
+    fn answers_block_sanitizes_and_flattens_values() {
+        use std::collections::HashMap;
+        let mut m = HashMap::new();
+        m.insert(
+            "motivation".to_string(),
+            "05:57▮▮▮Claude responded: Linha um.\n\nLinha dois.".to_string(),
+        );
+        let b = answers_block(&m, Locale::En);
+        assert!(b.contains("- motivation: Linha um.  Linha dois.\n"));
+        assert!(!b.contains("Claude responded"));
+        assert!(!b.contains("05:57"));
+    }
+
+    #[test]
+    fn apply_prompts_include_fill_hygiene() {
+        let p = apply_by_url("https://x/1", "", "- k: v", false, false, "/tmp", Locale::En);
+        assert!(p.contains("CLEAR it first"));
+        let p = apply_for_job(
+            "T", "C", "https://x/1", "cv", "cover", "", "gupy", "pb", "- k: v", "/tmp",
+            Locale::PtBr,
+        );
+        assert!(p.contains("LIMPE o campo primeiro"));
     }
 
     #[test]
@@ -1225,6 +1401,7 @@ mod tests {
             "/cv.pdf",
             "- english_level: advanced\n",
             false,
+            false,
             "/tmp/shots",
             Locale::En,
         );
@@ -1254,6 +1431,7 @@ mod tests {
             "",
             "- english_level: avançado\n",
             true,
+            false,
             "/tmp/shots",
             Locale::PtBr,
         );

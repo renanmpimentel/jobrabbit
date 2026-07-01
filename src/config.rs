@@ -39,6 +39,11 @@ pub struct Settings {
     pub bypass_permissions: bool,
     /// Apply mode: "review" | "autonomous" | "hybrid".
     pub apply_mode: String,
+    /// Safety master: when `true` (default), the agent NEVER fills or submits a form on a job
+    /// site without an explicit human review+approval of the generated content (CV/cover letter).
+    /// Takes precedence over `apply_mode` (holds even in autonomous/hybrid). The user's own
+    /// identity data (answer bank) is still filled without extra approval.
+    pub require_human_review: bool,
     /// In "hybrid" mode, auto-apply only when fit >= this threshold; below it goes to review.
     pub hybrid_threshold: f64,
     /// Dry-run: simulates everything (search/evaluate/generate) but NEVER submits an application.
@@ -68,6 +73,7 @@ impl Default for Settings {
             use_chrome: true,
             bypass_permissions: true,
             apply_mode: "review".to_string(),
+            require_human_review: true,
             hybrid_threshold: 0.9,
             dry_run: false,
             language_filter: false,

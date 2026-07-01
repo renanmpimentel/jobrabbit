@@ -5,9 +5,22 @@
 //! to both formats. The fonts (DejaVu, with accents) are embedded.
 
 use anyhow::Result;
+use std::path::Path;
 
 const FONT_REGULAR: &[u8] = include_bytes!("../assets/fonts/DejaVuSans.ttf");
 const FONT_BOLD: &[u8] = include_bytes!("../assets/fonts/DejaVuSans-Bold.ttf");
+
+/// Renders the CV markdown to a PDF FILE on disk, for résumé UPLOAD.
+/// The Chrome file-upload tool cannot handle `.docx`, so we always upload a PDF
+/// rendered from the CV content. Creates parent dirs as needed.
+pub fn write_pdf_file(content: &str, dest: &Path) -> Result<()> {
+    let bytes = to_pdf(content)?;
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    std::fs::write(dest, bytes)?;
+    Ok(())
+}
 
 /// Logical block of the document.
 enum Block {
