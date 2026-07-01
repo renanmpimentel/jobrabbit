@@ -97,13 +97,10 @@ function Sidebar({ active, setActive, open, setOpen }: { active: string; setActi
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -248 }}
-        animate={{ x: open ? 0 : -248 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface lg:static lg:translate-x-0",
-          "lg:animate-none"
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* Brand */}
@@ -137,7 +134,7 @@ function Sidebar({ active, setActive, open, setOpen }: { active: string; setActi
             />
           ))}
         </nav>
-      </motion.aside>
+      </aside>
     </>
   );
 }
