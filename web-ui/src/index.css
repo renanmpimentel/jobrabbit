@@ -2,8 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode (default) */
 :root {
+  color-scheme: light;
+  --bg: 251 251 249;
+  --surface: 255 255 255;
+  --surface-2: 246 246 243;
+  --border: 233 233 228;
+  --fg: 26 26 23;
+  --fg-muted: 107 107 99;
+  --fg-subtle: 158 158 148;
+  --accent: 15 122 84;
+  --accent-fg: 255 255 255;
+  --success: 22 143 74;
+  --warn: 181 122 12;
+  --danger: 194 58 58;
+  --info: 46 108 168;
+}
+
+/* Dark mode */
+.dark {
   color-scheme: dark;
+  --bg: 17 19 16;
+  --surface: 24 26 22;
+  --surface-2: 30 33 28;
+  --border: 42 45 38;
+  --fg: 236 236 230;
+  --fg-muted: 154 156 146;
+  --fg-subtle: 108 110 100;
+  --accent: 61 214 140;
+  --accent-fg: 10 20 14;
+  --success: 74 200 130;
+  --warn: 224 168 74;
+  --danger: 240 130 130;
+  --info: 120 176 232;
 }
 
 html,
@@ -14,53 +46,29 @@ body,
 
 body {
   margin: 0;
-  background: #070b14;
-  color: #e8edf7;
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
   font-family: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* ---- Atmosfera de fundo (cockpit): malha de gradiente + grão + vinheta ---- */
-.bg-atmosphere {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background:
-    radial-gradient(60% 50% at 18% 0%, rgba(91, 240, 165, 0.10), transparent 70%),
-    radial-gradient(50% 50% at 95% 8%, rgba(139, 156, 255, 0.10), transparent 70%),
-    radial-gradient(70% 60% at 50% 110%, rgba(91, 240, 165, 0.06), transparent 70%),
-    #070b14;
+/* ---- Scrollbar discreta ---- */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) transparent;
 }
-/* Grão sutil sobre tudo. */
-.bg-grain {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+.scroll-thin::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
 }
-
-/* ---- Utilitários de superfície ---- */
-@layer components {
-  .glass {
-    background: rgba(14, 20, 36, 0.72);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow:
-      0 18px 50px -20px rgba(0, 0, 0, 0.7),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
-  }
-  .hairline {
-    border-color: rgba(255, 255, 255, 0.08);
-  }
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgb(var(--border) / 0.5);
+  border-radius: 5px;
 }
-
-/* Texto com gradiente neon (wordmark/realces). */
-.text-glow {
-  text-shadow: 0 0 18px rgba(91, 240, 165, 0.45);
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--border) / 0.7);
 }
 
 /* ---- Markdown (relatório/preview ATS) ---- */
@@ -101,29 +109,12 @@ body {
   color: #f8fafc;
 }
 .md a {
-  color: #8b9cff;
+  color: rgb(var(--info));
 }
 .md code {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--surface-2));
   padding: 0.1em 0.34em;
   border-radius: 5px;
   font-size: 0.85em;
-}
-
-/* ---- Scrollbar discreta ---- */
-.scroll-thin {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
-}
-.scroll-thin::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-.scroll-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 5px;
-}
-.scroll-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }

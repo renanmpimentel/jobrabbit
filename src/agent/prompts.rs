@@ -51,6 +51,7 @@ pub fn search_and_evaluate(
     hybrid_threshold: f64,
     locale: Locale,
     language_filter: bool,
+    work_model: &str,
 ) -> String {
     match locale {
         Locale::En => {
@@ -91,6 +92,18 @@ pub fn search_and_evaluate(
                 ""
             };
 
+            // Work model filter: restrict to selected work model.
+            let work_model_label = match work_model {
+                "onsite" => "ON-SITE (in office)",
+                "hybrid" => "HYBRID",
+                _ => "REMOTE (work-from-anywhere)",
+            };
+            let work_model_section = format!(
+                "## Work model\n\
+                 Only search for and consider {label} jobs. If a job's work model doesn't match, skip it — emit the `job` line and report the `application` with status \"skipped\".\n\n",
+                label = work_model_label
+            );
+
             format!(
                 "You are the jobRabbit agent, helping this candidate apply to jobs.\n\n\
                  IMPORTANT: use the **Claude in Chrome** integration (the user's REAL Chrome, already logged in).\n\
@@ -104,6 +117,7 @@ pub fn search_and_evaluate(
                  work model, requirements).\n\n\
                  {policy}\n\n\
                  {language}\
+                 {work_model}\
                  ## CV/cover letter language\n\
                  When you generate a CV or cover letter for a job, write it in the LANGUAGE OF THE JOB\n\
                  DESCRIPTION (detect it per job), NOT the UI language.\n\n\
@@ -122,6 +136,7 @@ pub fn search_and_evaluate(
                 query = variant.query,
                 policy = policy,
                 language = language,
+                work_model = work_model_section,
             )
         }
         Locale::PtBr => {
@@ -162,6 +177,18 @@ pub fn search_and_evaluate(
                 ""
             };
 
+            // Work model filter: restrict to selected work model.
+            let modelo_trabalho_label = match work_model {
+                "onsite" => "PRESENCIAIS",
+                "hybrid" => "HÍBRIDAS",
+                _ => "REMOTAS",
+            };
+            let modelo_trabalho = format!(
+                "## Modelo de trabalho\n\
+                 Busque e considere APENAS vagas {label}. Se o modelo de trabalho não bater, pule — emita a linha `job` e reporte a `application` com status \"skipped\".\n\n",
+                label = modelo_trabalho_label
+            );
+
             format!(
                 "Você é o agente do jobRabbit, que ajuda este candidato a se candidatar a vagas.\n\n\
                  IMPORTANTE: use a integração **Claude in Chrome** (o Chrome REAL do usuário, já logado).\n\
@@ -175,6 +202,7 @@ pub fn search_and_evaluate(
                  modelo de trabalho, requisitos).\n\n\
                  {politica}\n\n\
                  {idioma}\
+                 {modelo_trabalho}\
                  ## Idioma do CV/carta\n\
                  Ao gerar um CV ou carta de apresentação para uma vaga, escreva-o no IDIOMA DA\n\
                  DESCRIÇÃO DA VAGA (detecte por vaga), NÃO no idioma da UI.\n\n\
@@ -192,6 +220,7 @@ pub fn search_and_evaluate(
                 label = variant.label,
                 query = variant.query,
                 idioma = idioma,
+                modelo_trabalho = modelo_trabalho,
             )
         }
     }
@@ -228,6 +257,7 @@ pub fn apply_by_url(
     cv_file_path: &str,
     answers: &str,
     dry_run: bool,
+    screenshot_dir: &str,
     locale: Locale,
 ) -> String {
     let dry_run_hint = if dry_run {
@@ -264,7 +294,7 @@ pub fn apply_by_url(
                  6. Evaluate the job fit based on requirements vs. the candidate's profile.\n\
                  7. {dry_run_hint}\n\
                  8. If not dry-run, complete the full application flow per the platform playbook.\n\
-                 9. After confirmation, capture a screenshot and include its absolute path.\n\n\
+                 9. After you see the explicit submission confirmation, take a screenshot of the confirmation with the Claude-in-Chrome screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
                  ## Candidate answer bank (use it to fill the fields)\n{answers}\n\n\
                  ## Execution rules\n\
                  - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
@@ -281,11 +311,7 @@ pub fn apply_by_url(
                  - If login is needed and you are not logged in: `pending kind=\"login\"` (describe the platform).\n\
                  - Captcha: `pending kind=\"captcha\"` and skip.\n\
                  - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
-                 - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\
-                 - After seeing the explicit submission confirmation, capture a screenshot via Claude in Chrome,\n\
-                   save it as a PNG file, and include its absolute path in the `screenshot` field of the\n\
-                   application JSON. BEST-EFFORT: if the screenshot cannot be captured, still report `applied`\n\
-                   WITHOUT the screenshot field.\n\n\
+                 - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\n\
                  ## Output (REQUIRED) — ONE JSON line per event, no text outside it:\n\
                  - Job extraction: {{\"type\":\"job\",\"url\":\"{url}\",\"title\":\"...\",\"company\":\"...\",\"detected_language\":\"en|pt|...\"}}\n\
                  - Submitted & CONFIRMED: {{\"type\":\"application\",\"url\":\"{url}\",\"status\":\"applied\"}}\n\
@@ -362,6 +388,7 @@ pub fn apply_for_job(
     ats_name: &str,
     playbook: &str,
     answers: &str,
+    screenshot_dir: &str,
     locale: Locale,
 ) -> String {
     match locale {
@@ -400,10 +427,7 @@ pub fn apply_for_job(
                  - Captcha: `pending kind=\"captcha\"` and skip.\n\
                  - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
                  - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\
-                 - After seeing the explicit submission confirmation, capture a screenshot via Claude in Chrome,\n\
-                   save it as a PNG file, and include its absolute path in the `screenshot` field of the\n\
-                   application JSON. BEST-EFFORT: if the screenshot cannot be captured, still report `applied`\n\
-                   WITHOUT the screenshot field.\n\n\
+                 - After you see the explicit submission confirmation, take a screenshot of the confirmation with the Claude-in-Chrome screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
                  ### Job\n- Role: {job_title}\n- Company: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Cover letter\n{cover}\n\n\
                  ## Output (REQUIRED) — ONE JSON line per event, no text outside it:\n\
@@ -451,10 +475,7 @@ pub fn apply_for_job(
                  - Captcha: `pending kind=\"captcha\"` e pule.\n\
                  - NÃO desista no primeiro obstáculo: role a página, procure o botão certo, avance etapas.\n\
                  - Só reporte `applied` ao ver uma CONFIRMAÇÃO explícita (\"Candidatura enviada\"/\"submitted\").\n\
-                 - Após ver a confirmação explícita de envio, capture uma screenshot via Claude in Chrome,\n\
-                   salve como arquivo PNG, e inclua seu caminho absoluto no campo `screenshot` do JSON\n\
-                   de candidatura. BEST-EFFORT: se a screenshot não puder ser capturada, ainda reporte `applied`\n\
-                   SEM o campo screenshot.\n\n\
+                 - Após ver a confirmação explícita de envio, capture uma screenshot da confirmação com a ferramenta de screenshot do Claude-in-Chrome. Então salve essa screenshot como arquivo PNG neste diretório: `{screenshot_dir}` — escolha um nome único como `confirmation-<timestamp>.png`. Use a ferramenta **Write** (ou um passo Bash `base64 -d`) e GARANTA que o arquivo salvo seja um PNG BINÁRIO válido — decodifique os dados base64 da imagem se necessário, NÃO grave o texto base64 cru. Coloque o caminho absoluto COMPLETO do arquivo salvo no campo `screenshot` do JSON de candidatura. Isso é BEST-EFFORT: se você não puder salvá-lo, ainda reporte `applied` sem o campo `screenshot`.\n\n\
                  ### Vaga\n- Cargo: {job_title}\n- Empresa: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Carta de apresentação\n{cover}\n\n\
                  ## Saída (OBRIGATÓRIO) — UMA linha JSON por evento, sem texto fora dela:\n\
@@ -840,6 +861,60 @@ pub fn build_profile_from_linkedin(url: &str, locale: Locale) -> String {
     }
 }
 
+/// Prompt to resume a previous Claude session after the user has manually handled a blocker.
+///
+/// The agent continues from where it stopped, following the same NDJSON protocol
+/// (job/application/pending lines).
+pub fn continue_session(user_msg: &str, locale: Locale) -> String {
+    let user_instruction = if user_msg.is_empty() {
+        String::new()
+    } else {
+        match locale {
+            Locale::En => format!("Additional instruction from the user: {user_msg}\n\n"),
+            Locale::PtBr => format!("Instrução adicional do usuário: {user_msg}\n\n"),
+        }
+    };
+
+    match locale {
+        Locale::En => {
+            format!(
+                "You are the jobRabbit agent resuming a session after manual action.\n\n\
+                 The user has manually handled a blocker (captcha, login, required field, etc.)\n\
+                 or completed a step that requires human intervention. Your mission is to\n\
+                 RESUME from where you stopped and continue the EXACT SAME application/search flow.\n\n\
+                 {user_instruction}\
+                 ## Protocol (REQUIRED)\n\
+                 Continue emitting NDJSON (one JSON line per event), with types:\n\
+                 - Job found/evaluated: {{\"type\":\"job\",...}}\n\
+                 - Application: {{\"type\":\"application\",...}}\n\
+                 - Pending: {{\"type\":\"pending\",...}}\n\
+                 - Answer discovered: {{\"type\":\"answer\",...}}\n\n\
+                 Use the **Claude in Chrome** integration (REAL logged-in Chrome, NOT Playwright).\n\
+                 Remember: do not emit duplicate lines for work already completed in the previous session.\n\
+                 Pick up exactly where the session ended."
+            )
+        }
+        Locale::PtBr => {
+            format!(
+                "Você é o agente do jobRabbit retomando uma sessão após ação manual.\n\n\
+                 O usuário resolveu manualmente um bloqueio (captcha, login, campo obrigatório, etc.)\n\
+                 ou completou uma etapa que exige intervenção humana. Sua missão é\n\
+                 RETOMAR de onde parou e continuar o MESMO fluxo de candidatura/busca.\n\n\
+                 {user_instruction}\
+                 ## Protocolo (OBRIGATÓRIO)\n\
+                 Continue emitindo NDJSON (uma linha JSON por evento), com tipos:\n\
+                 - Vaga encontrada/avaliada: {{\"type\":\"job\",...}}\n\
+                 - Candidatura: {{\"type\":\"application\",...}}\n\
+                 - Pendência: {{\"type\":\"pending\",...}}\n\
+                 - Resposta descoberta: {{\"type\":\"answer\",...}}\n\n\
+                 Use a integração **Claude in Chrome** (Chrome REAL logado, NÃO Playwright).\n\
+                 Lembre-se: não emita linhas duplicadas de trabalho já concluído na sessão anterior.\n\
+                 Continue exatamente de onde a sessão parou."
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -870,12 +945,14 @@ mod tests {
             0.9,
             Locale::En,
             false,
+            "remote",
         );
         assert!(p.contains("Rust/Go"));
         assert!(p.contains("Senior Remote"));
         assert!(p.contains("senior rust remote"));
         assert!(p.contains("NDJSON"));
         assert!(p.contains("fit_score"));
+        assert!(p.contains("Work model") || p.contains("REMOTE"));
     }
 
     #[test]
@@ -895,6 +972,7 @@ mod tests {
             0.9,
             Locale::En,
             false,
+            "remote",
         );
         assert!(!without.contains("Language: English only"));
 
@@ -906,6 +984,7 @@ mod tests {
             0.9,
             Locale::En,
             true,
+            "remote",
         );
         assert!(with.contains("Language: English only"));
         assert!(with.contains("skipped"));
@@ -919,8 +998,45 @@ mod tests {
             0.9,
             Locale::PtBr,
             true,
+            "remote",
         );
         assert!(pt.contains("APENAS pt-BR"));
+    }
+
+    #[test]
+    fn search_filters_by_work_model() {
+        let v = SearchVariant {
+            id: 1,
+            label: "L".into(),
+            query: "q".into(),
+            enabled: true,
+            created_at: "x".into(),
+        };
+        // EN with onsite
+        let onsite_en = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "onsite",
+        );
+        assert!(onsite_en.contains("ON-SITE"));
+
+        // PT-BR with hybrid
+        let hybrid_pt = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            0.9,
+            Locale::PtBr,
+            false,
+            "hybrid",
+        );
+        assert!(hybrid_pt.contains("HÍBRIDAS"));
     }
 
     #[test]
@@ -940,6 +1056,7 @@ mod tests {
             0.9,
             Locale::En,
             false,
+            "remote",
         );
         assert!(review.contains("REVIEW"));
         assert!(review.contains("Do NOT submit"));
@@ -952,6 +1069,7 @@ mod tests {
             0.9,
             Locale::En,
             false,
+            "remote",
         );
         assert!(auto.contains("AUTONOMOUS"));
         assert!(auto.contains("SUBMIT"));
@@ -964,6 +1082,7 @@ mod tests {
             0.9,
             Locale::En,
             false,
+            "remote",
         );
         assert!(dry.contains("SIMULATION") || dry.contains("dry-run"));
         assert!(dry.contains("dry_run"));
@@ -978,6 +1097,7 @@ mod tests {
             "Gupy",
             "PLAYBOOK_GUPY_HERE",
             "- english_level: advanced\n",
+            "/tmp/shots",
             Locale::En,
         );
         assert!(apply.contains("APPROVED"));
@@ -1042,9 +1162,9 @@ mod tests {
             enabled: true,
             created_at: "x".into(),
         };
-        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::PtBr, false);
+        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::PtBr, false, "remote");
         assert!(pt.contains("IDIOMA DA"), "search flow must generate CV/cover in the job's language");
-        let en = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::En, false);
+        let en = search_and_evaluate(&sample_profile(), &v, "review", false, 0.9, Locale::En, false, "remote");
         assert!(en.contains("LANGUAGE OF THE JOB"));
     }
 
@@ -1105,6 +1225,7 @@ mod tests {
             "/cv.pdf",
             "- english_level: advanced\n",
             false,
+            "/tmp/shots",
             Locale::En,
         );
         assert!(prompt.contains("https://example.com/job/123"), "must include the URL");
@@ -1124,6 +1245,8 @@ mod tests {
             "must output detected_language field"
         );
         assert!(prompt.contains("Claude in Chrome"), "must use Chrome");
+        assert!(prompt.contains("Write"), "must instruct Write tool for screenshot");
+        assert!(prompt.contains("/tmp/shots"), "must include screenshot directory");
 
         // Test Portuguese locale
         let pt_prompt = apply_by_url(
@@ -1131,10 +1254,44 @@ mod tests {
             "",
             "- english_level: avançado\n",
             true,
+            "/tmp/shots",
             Locale::PtBr,
         );
         assert!(pt_prompt.contains("https://example.com/job/456"));
         assert!(pt_prompt.to_lowercase().contains("idioma"));
         assert!(pt_prompt.contains("dry_run"));
+    }
+
+    #[test]
+    fn continue_session_includes_user_msg() {
+        // Test English locale without user message
+        let en_prompt = continue_session("", Locale::En);
+        assert!(
+            en_prompt.to_lowercase().contains("resume"),
+            "must mention resume/continue"
+        );
+        assert!(
+            en_prompt.to_lowercase().contains("ndjson"),
+            "must mention NDJSON protocol"
+        );
+        assert!(en_prompt.contains("Claude in Chrome"));
+
+        // Test English locale with user message
+        let en_with_msg = continue_session("type X carefully", Locale::En);
+        assert!(en_with_msg.contains("type X carefully"));
+        assert!(en_with_msg.contains("Additional instruction from the user"));
+
+        // Test Portuguese locale with message
+        let pt_with_msg = continue_session("faça Y com cuidado", Locale::PtBr);
+        assert!(pt_with_msg.contains("faça Y com cuidado"));
+        assert!(pt_with_msg.contains("Instrução adicional do usuário"));
+        assert!(
+            pt_with_msg.to_lowercase().contains("retom"),
+            "Portuguese version should mention 'retomar' (resume)"
+        );
+
+        // Test empty message in Portuguese
+        let pt_prompt = continue_session("", Locale::PtBr);
+        assert!(!pt_prompt.contains("Instrução adicional do usuário:"));
     }
 }

@@ -85,6 +85,8 @@ pub struct Application {
     pub cv_generated: Option<String>,
     pub cover_letter: Option<String>,
     pub screenshot_path: Option<String>,
+    pub stage: Option<String>,
+    pub notes: Option<String>,
     pub created_at: String,
 }
 
@@ -97,6 +99,8 @@ impl Application {
             cv_generated: row.get("cv_generated")?,
             cover_letter: row.get("cover_letter")?,
             screenshot_path: row.get("screenshot_path")?,
+            stage: row.get("stage")?,
+            notes: row.get("notes")?,
             created_at: row.get("created_at")?,
         })
     }

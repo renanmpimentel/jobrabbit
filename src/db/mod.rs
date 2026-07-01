@@ -39,6 +39,8 @@ impl Db {
         // Light migration for old DBs (ignores if column already exists).
         let _ = conn.execute("ALTER TABLE pending_actions ADD COLUMN field_key TEXT", []);
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN screenshot_path TEXT", []);
+        let _ = conn.execute("ALTER TABLE applications ADD COLUMN stage TEXT DEFAULT 'applied'", []);
+        let _ = conn.execute("ALTER TABLE applications ADD COLUMN notes TEXT", []);
         let db = Self { conn };
         db.migrate_answer_keys()?;
         db.seed_answers()?;
@@ -193,18 +195,19 @@ impl Db {
         Ok(())
     }
 
-    /// Apaga os dados de execução (vagas, candidaturas, pendências, sessões e
-    /// feedback), numa transação atômica. Preserva perfil, variantes de busca,
-    /// respostas de triagem e dados de currículo (cv_reviews/cv_versions).
-    /// Permite recomeçar uma busca do zero. Idempotente.
+    /// Apaga os dados de execução (vagas não aplicadas, candidaturas não aplicadas, pendências,
+    /// sessões e feedback), numa transação atômica. Preserva perfil, variantes de busca,
+    /// respostas de triagem, dados de currículo (cv_reviews/cv_versions), e TODAS as vagas
+    /// e candidaturas com status='applied' (e seus screenshots). Permite recomeçar uma busca
+    /// do zero mantendo o histórico de aplicações bem-sucedidas. Idempotente.
     pub fn clear_runs(&self) -> Result<()> {
         self.conn.execute_batch(
             "BEGIN;
-             DELETE FROM applications;
+             DELETE FROM applications WHERE status != 'applied';
              DELETE FROM pending_actions;
              DELETE FROM sessions;
              DELETE FROM feedback;
-             DELETE FROM jobs;
+             DELETE FROM jobs WHERE NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = jobs.id AND a.status = 'applied');
              COMMIT;",
         )?;
         Ok(())
@@ -277,6 +280,23 @@ impl Db {
         Ok(rows)
     }
 
+    /// Jobs that have an `applied` application.
+    pub fn list_jobs_applied(&self) -> Result<Vec<Job>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, company, url, source, description, fit_score, found_at
+             FROM jobs j
+             WHERE EXISTS (
+                 SELECT 1 FROM applications a
+                 WHERE a.job_id = j.id AND a.status = 'applied'
+             )
+             ORDER BY found_at DESC",
+        )?;
+        let rows = stmt
+            .query_map([], Job::from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
     // ---- Applications -----------------------------------------------------
 
     pub fn add_application(
@@ -297,7 +317,7 @@ impl Db {
     /// Current application for a job (if any).
     pub fn application_for_job(&self, job_id: i64) -> Result<Option<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications WHERE job_id = ?1 ORDER BY id DESC LIMIT 1",
         )?;
         let app = stmt.query_row(params![job_id], Application::from_row).ok();
@@ -324,10 +344,19 @@ impl Db {
         Ok(())
     }
 
+    /// Updates the tracking stage and notes for an application by id.
+    pub fn set_application_tracking(&self, id: i64, stage: &str, notes: Option<&str>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE applications SET stage = ?1, notes = ?2 WHERE id = ?3",
+            params![stage, notes, id],
+        )?;
+        Ok(())
+    }
+
     /// Application by id.
     pub fn get_application(&self, id: i64) -> Result<Option<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications WHERE id = ?1",
         )?;
         Ok(stmt.query_row(params![id], Application::from_row).ok())
@@ -344,7 +373,7 @@ impl Db {
 
     pub fn list_applications(&self) -> Result<Vec<Application>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, created_at
+            "SELECT id, job_id, status, cv_generated, cover_letter, screenshot_path, stage, notes, created_at
              FROM applications ORDER BY created_at DESC",
         )?;
         let rows = stmt
@@ -399,6 +428,19 @@ impl Db {
             .query_map([], Session::from_row)?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
+    }
+
+    /// Gets the most recent Claude session ID (for resuming a continuation).
+    pub fn latest_claude_session_id(&self) -> Result<Option<String>> {
+        let sid = self
+            .conn
+            .query_row(
+                "SELECT claude_session_id FROM sessions WHERE claude_session_id IS NOT NULL ORDER BY started_at DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        Ok(sid)
     }
 
     // ---- Pending actions --------------------------------------------------
@@ -771,6 +813,38 @@ mod tests {
     }
 
     #[test]
+    fn latest_claude_session_id() {
+        let db = Db::open_in_memory().unwrap();
+
+        // No sessions yet
+        assert_eq!(db.latest_claude_session_id().unwrap(), None);
+
+        // Create a session without a claude_session_id (None)
+        db.start_session(None).unwrap();
+
+        // Still None (session exists but has no claude_session_id)
+        assert_eq!(db.latest_claude_session_id().unwrap(), None);
+
+        // Create a session with a claude_session_id
+        db.start_session(Some("sess-1")).unwrap();
+
+        // Now returns that session ID
+        assert_eq!(
+            db.latest_claude_session_id().unwrap(),
+            Some("sess-1".to_string())
+        );
+
+        // Create another one with a different ID
+        db.start_session(Some("sess-2")).unwrap();
+
+        // Returns the most recent one
+        assert_eq!(
+            db.latest_claude_session_id().unwrap(),
+            Some("sess-2".to_string())
+        );
+    }
+
+    #[test]
     fn identity_fields_are_seeded() {
         let db = Db::open_in_memory().unwrap();
         let answers = db.get_answers().unwrap();
@@ -793,40 +867,58 @@ mod tests {
         db.set_answer("english_level", "English level", "advanced").unwrap();
         db.add_cv_review(82, "EM", "report").unwrap();
 
-        // Dados de execução que DEVEM ser apagados.
-        let job = db
+        // Applied job with screenshot — MUST be preserved.
+        let applied_job = db
+            .upsert_job(&NewJob {
+                title: "Senior Rust".into(),
+                url: "https://acme.jobs/applied-1".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        let app_id = db.add_application(applied_job, "applied", Some("applied-cv"), Some("applied-cover")).unwrap();
+        db.set_application_screenshot(applied_job, "/path/to/screenshot.png").unwrap();
+
+        // Non-applied job with execution data — MUST be deleted.
+        let non_applied_job = db
             .upsert_job(&NewJob {
                 title: "Rust Eng".into(),
                 url: "https://acme.jobs/1".into(),
                 ..Default::default()
             })
             .unwrap();
-        db.add_application(job, "applied", None, None).unwrap();
-        db.add_pending(Some(job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
+        db.add_application(non_applied_job, "ready", Some("draft-cv"), None).unwrap();
+        db.add_pending(Some(non_applied_job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
         db.start_session(Some("sess-1")).unwrap();
         db.add_feedback("summary", "suggestions").unwrap();
 
         db.clear_runs().unwrap();
 
-        // Execução: tudo vazio.
-        assert!(db.list_jobs().unwrap().is_empty());
-        assert!(db.list_applications().unwrap().is_empty());
-        assert!(db.list_pending(true).unwrap().is_empty());
-        assert!(db.list_sessions().unwrap().is_empty());
-        assert!(db.list_feedback().unwrap().is_empty());
+        // Non-applied execution data: all deleted.
+        let non_applied_jobs = db.list_jobs().unwrap();
+        assert_eq!(non_applied_jobs.len(), 1, "only applied job should remain");
+        assert_eq!(non_applied_jobs[0].url, "https://acme.jobs/applied-1");
 
-        // Preservado: intacto.
+        let all_apps = db.list_applications().unwrap();
+        assert_eq!(all_apps.len(), 1, "only applied application should remain");
+        assert_eq!(all_apps[0].id, app_id);
+        assert_eq!(all_apps[0].status, "applied");
+        assert_eq!(all_apps[0].screenshot_path, Some("/path/to/screenshot.png".to_string()), "screenshot_path must be preserved");
+
+        assert!(db.list_pending(true).unwrap().is_empty(), "all pending actions deleted");
+        assert!(db.list_sessions().unwrap().is_empty(), "all sessions deleted");
+        assert!(db.list_feedback().unwrap().is_empty(), "all feedback deleted");
+
+        // Profile and answers preserved.
         assert_eq!(db.get_profile().unwrap().background, "bg");
         assert_eq!(db.list_variants().unwrap().len(), 1);
-        // Answers are seeded with all canonical fields; set_answer updates one
-        // of them in place (english_level), so the seeded set is preserved intact.
         let answers = db.get_answers().unwrap();
         assert!(answers.len() > 1);
         assert!(answers.iter().any(|a| a.key == "english_level" && a.value == "advanced"));
         assert!(db.latest_cv_review().unwrap().is_some());
 
-        // Idempotente: rodar de novo num banco já limpo não falha.
+        // Idempotent: running again on a clean db does not fail.
         db.clear_runs().unwrap();
+        assert_eq!(db.list_jobs_applied().unwrap().len(), 1);
     }
 
     #[test]
@@ -872,6 +964,49 @@ mod tests {
     }
 
     #[test]
+    fn list_jobs_applied_returns_only_applied() {
+        let db = Db::open_in_memory().unwrap();
+
+        // Create two jobs
+        let job1 = db
+            .upsert_job(&NewJob {
+                title: "Senior Dev".into(),
+                url: "https://jobs.example/1".into(),
+                company: "Company A".into(),
+                source: "LinkedIn".into(),
+                description: "Great opportunity".into(),
+                fit_score: Some(0.85),
+            })
+            .unwrap();
+
+        let job2 = db
+            .upsert_job(&NewJob {
+                title: "Rust Engineer".into(),
+                url: "https://jobs.example/2".into(),
+                company: "Company B".into(),
+                source: "GitHub".into(),
+                description: "Exciting project".into(),
+                fit_score: Some(0.92),
+            })
+            .unwrap();
+
+        // Mark job1 as applied
+        db.add_application(job1, "applied", None, None)
+            .unwrap();
+
+        // Verify list_jobs_applied returns only job1
+        let applied = db.list_jobs_applied().unwrap();
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].id, job1);
+        assert_eq!(applied[0].title, "Senior Dev");
+
+        // Verify list_jobs_unapplied returns only job2
+        let unapplied = db.list_jobs_unapplied().unwrap();
+        assert_eq!(unapplied.len(), 1);
+        assert_eq!(unapplied[0].id, job2);
+    }
+
+    #[test]
     fn application_screenshot_path() {
         let db = Db::open_in_memory().unwrap();
         let job_id = db
@@ -895,5 +1030,34 @@ mod tests {
         // Verify get_application also returns it
         let app2 = db.get_application(app.id).unwrap().unwrap();
         assert_eq!(app2.screenshot_path.as_deref(), Some("/tmp/screenshot.png"));
+    }
+
+    #[test]
+    fn application_tracking_stage_and_notes() {
+        let db = Db::open_in_memory().unwrap();
+        let job_id = db
+            .upsert_job(&NewJob {
+                title: "Dev".into(),
+                url: "https://x/4".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        let app_id = db.add_application(job_id, "applied", None, None).unwrap();
+
+        // Set tracking stage and notes
+        db.set_application_tracking(app_id, "interview", Some("call on friday"))
+            .unwrap();
+
+        // Verify get_application returns both
+        let app = db.get_application(app_id).unwrap().unwrap();
+        assert_eq!(app.stage.as_deref(), Some("interview"));
+        assert_eq!(app.notes.as_deref(), Some("call on friday"));
+
+        // Update with notes=None
+        db.set_application_tracking(app_id, "offer", None)
+            .unwrap();
+        let app = db.get_application(app_id).unwrap().unwrap();
+        assert_eq!(app.stage.as_deref(), Some("offer"));
+        assert_eq!(app.notes, None);
     }
 }

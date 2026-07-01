@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS applications (
     cv_generated    TEXT,
     cover_letter    TEXT,
     screenshot_path TEXT,
+    stage           TEXT NOT NULL DEFAULT 'applied', -- applied|screening|interview|offer|rejected
+    notes           TEXT,
     created_at      TEXT NOT NULL
 );
 

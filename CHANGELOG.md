@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-01
+
+### Added
+- **Vagas tab** (renamed from Candidaturas) with an Available/Applied filter;
+  applied jobs show status, a proof screenshot thumbnail, and a manual **tracking
+  pipeline** (stage: Applied → In review → Interview → Offer / Rejected) with notes.
+- **Continue session**: when the agent is blocked (captcha/login/field), resume the
+  previous `claude` session with a typed command after you handle it in Chrome.
+- **Work model** setting (Remote/On-site/Hybrid, default Remote) filtering the search.
+- **Reliable screenshot proof**: the agent saves the confirmation screenshot as a
+  real PNG (base64 → file) associated with the applied job.
+
+### Changed
+- **Full UI redesign**: minimal clean SaaS look with a left sidebar and a
+  light/dark theme toggle (persisted).
+- The UI language now drives the backend locale on load, so the agent's output
+  (ATS/search/feedback) always follows the language you see; CV/cover letter follow
+  the job's language.
+- **Clear execution data** never deletes already-applied jobs (and their proofs).
+
 ## [1.0.0] - 2026-06-30
 
 ### Added

@@ -23,10 +23,10 @@ function HealthBanner() {
       variants={fadeUp}
       onClick={() => nav("doctor")}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition",
+        "flex w-full items-center gap-4 rounded-xl border px-5 py-4 text-left transition-colors",
         critical
-          ? "border-danger/40 bg-danger/10 hover:bg-danger/15"
-          : "border-warn/40 bg-warn/10 hover:bg-warn/15",
+          ? "border-danger/30 bg-danger/8 hover:bg-danger/12"
+          : "border-warn/30 bg-warn/8 hover:bg-warn/12",
       )}
     >
       <Icon size={20} className={critical ? "text-danger" : "text-warn"} />
@@ -62,10 +62,10 @@ export default function Dashboard() {
   const s = stats.data;
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-8">
       <HealthBanner />
 
-      <motion.div variants={stagger} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <motion.div variants={stagger} className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label={t("dashboard.jobsFound")} value={s?.total_jobs ?? 0} />
         <StatCard label={t("dashboard.applications")} value={s?.total_applications ?? 0} />
         <StatCard label={t("dashboard.applied")} value={s?.applied ?? 0} />
@@ -78,9 +78,9 @@ export default function Dashboard() {
           {!jobs.data?.length ? (
             <Empty>{t("dashboard.noJobs")}</Empty>
           ) : (
-            <ul className="divide-y divide-edge">
+            <ul className="divide-y divide-border">
               {jobs.data.slice(0, 25).map((j) => (
-                <li key={j.id} className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-white/[0.02]">
+                <li key={j.id} className="flex items-center gap-4 px-6 py-3 transition hover:bg-surface-2">
                   <Badge tone={fitTone(j.fit_score)}>
                     {j.fit_score != null ? j.fit_score.toFixed(2) : "—"}
                   </Badge>
@@ -88,7 +88,7 @@ export default function Dashboard() {
                     href={j.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="group flex flex-1 items-center gap-1.5 truncate text-sm text-fg hover:text-neon"
+                    className="group flex flex-1 items-center gap-2 truncate text-sm text-fg hover:text-accent"
                     title={j.title}
                   >
                     <span className="truncate">
@@ -96,7 +96,7 @@ export default function Dashboard() {
                     </span>
                     <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
                   </a>
-                  {j.source && <span className="font-mono text-[11px] text-fg-dim">{j.source}</span>}
+                  {j.source && <span className="font-mono text-[11px] text-fg-subtle">{j.source}</span>}
                 </li>
               ))}
             </ul>

@@ -36,6 +36,8 @@ export interface Application {
   cv_generated: string | null;
   cover_letter: string | null;
   screenshot_path: string | null;
+  stage: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -92,6 +94,7 @@ export interface Settings {
   hybrid_threshold: number;
   dry_run: boolean;
   language_filter: boolean;
+  work_model: string;
   locale: string;
   cv_file_path: string;
   linkedin_url: string;

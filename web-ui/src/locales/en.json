@@ -5,7 +5,7 @@
     "pending": "Pending",
     "session": "Session",
     "ats": "ATS",
-    "applications": "Applications",
+    "applications": "Jobs",
     "feedback": "Feedback",
     "doctor": "Health",
     "config": "Config"
@@ -84,7 +84,11 @@
     "filterPlaceholder": "filter…",
     "following": "Following",
     "paused": "Paused",
-    "noActivity": "waiting for activity — click \"Run search\" to see the agent live."
+    "noActivity": "waiting for activity — click \"Run search\" to see the agent live.",
+    "continueTitle": "Continue after manual action",
+    "continueHint": "After you handle a blocker in Chrome (captcha/login/field), tell the agent to resume.",
+    "continuePlaceholder": "Optional instruction (or leave blank to just continue)",
+    "continueButton": "Continue"
   },
   "feedback": {
     "title": "Agent Feedback",
@@ -137,6 +141,11 @@
     "dryRunHint": "searches and evaluates, but NEVER submits applications",
     "languageFilterLabel": "Filter jobs by language",
     "languageFilterHint": "only consider jobs in the selected language",
+    "workModelLabel": "Work model",
+    "workModelHint": "which job type to search for",
+    "workModelRemote": "Remote",
+    "workModelOnsite": "On-site",
+    "workModelHybrid": "Hybrid",
     "agent": "Agent",
     "useChrome": "Use Claude in Chrome",
     "useChromeHint": "uses your logged-in Chrome browser",
@@ -150,8 +159,8 @@
     "linkedinUrl": "LinkedIn URL",
     "dangerZone": "Danger Zone",
     "resetRuns": "Clear execution data",
-    "resetRunsHint": "removes found jobs, applications, pending actions, sessions and feedback — keeps your profile, searches and answers",
-    "resetRunsConfirm": "Clear all execution data? Found jobs, applications, pending actions, sessions and feedback will be permanently deleted. Your profile, searches and answers are kept.",
+    "resetRunsHint": "removes found jobs, applications, pending actions, sessions and feedback — keeps your profile, searches, answers and already-applied jobs",
+    "resetRunsConfirm": "Clear all execution data? Found jobs, applications, pending actions, sessions and feedback will be permanently deleted. Your profile, searches, answers and already-applied jobs (with their screenshots) are kept.",
     "save": "Save Configuration"
   },
   "identity": {
@@ -179,6 +188,10 @@
     "viewProof": "View screenshot",
     "empty": "No applications yet. Paste a URL above and click Apply.",
     "jobNotFound": "(job details not found)",
+    "filterAvailable": "Available",
+    "filterApplied": "Applied",
+    "availableEmpty": "No available jobs yet.",
+    "appliedEmpty": "No applied jobs yet.",
     "status": {
       "applied": "Applied",
       "dry_run": "Simulated",
@@ -186,6 +199,16 @@
       "pending": "Pending",
       "failed": "Failed",
       "skipped": "Skipped"
+    },
+    "stageLabel": "Stage",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Add a note…",
+    "stage": {
+      "applied": "Applied",
+      "screening": "In review",
+      "interview": "Interview",
+      "offer": "Offer",
+      "rejected": "Rejected"
     }
   }
 }

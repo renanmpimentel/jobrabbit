@@ -5,7 +5,7 @@
     "pending": "Pendências",
     "session": "Sessão",
     "ats": "ATS",
-    "applications": "Candidaturas",
+    "applications": "Vagas",
     "feedback": "Feedback",
     "doctor": "Saúde",
     "config": "Config"
@@ -84,7 +84,11 @@
     "filterPlaceholder": "filtrar…",
     "following": "Seguindo",
     "paused": "Pausado",
-    "noActivity": "aguardando atividade — clique em \"Rodar busca\" para ver o agente ao vivo."
+    "noActivity": "aguardando atividade — clique em \"Rodar busca\" para ver o agente ao vivo.",
+    "continueTitle": "Continuar após ação manual",
+    "continueHint": "Depois de resolver um bloqueio no Chrome (captcha/login/campo), peça ao agente para retomar.",
+    "continuePlaceholder": "Instrução opcional (ou deixe em branco para só continuar)",
+    "continueButton": "Continuar"
   },
   "feedback": {
     "title": "Feedback do agente",
@@ -137,6 +141,11 @@
     "dryRunHint": "busca e avalia, mas NUNCA envia candidatura",
     "languageFilterLabel": "Filtrar vagas por idioma",
     "languageFilterHint": "considera apenas vagas no idioma selecionado",
+    "workModelLabel": "Modelo de trabalho",
+    "workModelHint": "que tipo de vaga buscar",
+    "workModelRemote": "Remoto",
+    "workModelOnsite": "Presencial",
+    "workModelHybrid": "Híbrido",
     "agent": "Agente",
     "useChrome": "Usar Claude in Chrome",
     "useChromeHint": "usa o Chrome real logado do usuário",
@@ -150,8 +159,8 @@
     "linkedinUrl": "LinkedIn URL",
     "dangerZone": "Zona de risco",
     "resetRuns": "Limpar dados de execução",
-    "resetRunsHint": "remove vagas encontradas, candidaturas, pendências, sessões e feedback — mantém seu perfil, buscas e respostas",
-    "resetRunsConfirm": "Limpar todos os dados de execução? Vagas encontradas, candidaturas, pendências, sessões e feedback serão apagados permanentemente. Seu perfil, buscas e respostas são mantidos.",
+    "resetRunsHint": "remove vagas encontradas, candidaturas, pendências, sessões e feedback — mantém seu perfil, buscas, respostas e as vagas já aplicadas",
+    "resetRunsConfirm": "Limpar todos os dados de execução? Vagas encontradas, candidaturas, pendências, sessões e feedback serão apagados permanentemente. Seu perfil, buscas, respostas e as vagas já aplicadas (com seus comprovantes) são mantidos.",
     "save": "Salvar configurações"
   },
   "identity": {
@@ -179,6 +188,10 @@
     "viewProof": "Ver comprovante",
     "empty": "Nenhuma candidatura ainda. Cole uma URL acima e clique em Candidatar.",
     "jobNotFound": "(detalhes da vaga não encontrados)",
+    "filterAvailable": "Disponíveis",
+    "filterApplied": "Aplicadas",
+    "availableEmpty": "Nenhuma vaga disponível ainda.",
+    "appliedEmpty": "Nenhuma vaga aplicada ainda.",
     "status": {
       "applied": "Candidatada",
       "dry_run": "Simulada",
@@ -186,6 +199,16 @@
       "pending": "Pendente",
       "failed": "Falhou",
       "skipped": "Pulada"
+    },
+    "stageLabel": "Estágio",
+    "notesLabel": "Notas",
+    "notesPlaceholder": "Adicionar uma nota…",
+    "stage": {
+      "applied": "Aplicada",
+      "screening": "Em análise",
+      "interview": "Entrevista",
+      "offer": "Oferta",
+      "rejected": "Rejeitada"
     }
   }
 }

@@ -28,6 +28,7 @@ const q = <T,>(key: string, path: string) =>
 
 export const useStats = () => q<Stats>("stats", "/stats");
 export const useJobs = () => q<Job[]>("jobs", "/jobs");
+export const useAppliedJobs = () => q<Job[]>("jobs-applied", "/jobs/applied");
 export const usePending = () => q<PendingAction[]>("pending", "/pending");
 export const useApplications = () => q<Application[]>("applications", "/applications");
 export const useFeedback = () => q<Feedback[]>("feedback", "/feedback");

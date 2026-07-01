@@ -47,6 +47,7 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
                 settings.hybrid_threshold,
                 settings.locale,
                 settings.language_filter,
+                &settings.work_model,
             )
         })
         .collect())
@@ -81,6 +82,9 @@ pub fn approval_prompt(
     let ats = crate::ats::detect(&job.url);
     let playbook = crate::ats::playbook(ats, settings.locale);
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let _ = std::fs::create_dir_all(&shots);
+    let shots_str = shots.to_string_lossy().to_string();
     Ok(prompts::apply_for_job(
         &job.title,
         &job.company,
@@ -91,6 +95,7 @@ pub fn approval_prompt(
         ats.name(),
         &playbook,
         &answers,
+        &shots_str,
         settings.locale,
     ))
 }
@@ -103,11 +108,15 @@ pub fn apply_by_url_prompt(
     settings: &Settings,
 ) -> Result<String, String> {
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
+    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let _ = std::fs::create_dir_all(&shots);
+    let shots_str = shots.to_string_lossy().to_string();
     Ok(prompts::apply_by_url(
         url,
         &settings.cv_file_path,
         &answers,
         settings.dry_run,
+        &shots_str,
         settings.locale,
     ))
 }
@@ -228,5 +237,40 @@ pub fn spawn_run(
             cost_usd: Some(cost),
             is_error: err,
         });
+    });
+}
+
+/// Spawns a resumption of a previous session: single prompt with session continuation.
+///
+/// Similar to `spawn_run` but for continuing after manual intervention. Emits
+/// `AgentStarted` before and `AgentFinished` after, like `spawn_run`.
+pub fn spawn_resume(
+    cfg: AgentConfig,
+    prompt: String,
+    resume_sid: String,
+    done_msg: String,
+    tx: UnboundedSender<AppEvent>,
+) {
+    let _ = tx.send(AppEvent::AgentStarted);
+    tokio::spawn(async move {
+        match agent::run_session(&cfg, &prompt, Some(&resume_sid), &tx).await {
+            Ok(s) => {
+                let _ = tx.send(AppEvent::AgentFinished {
+                    result: Some(done_msg),
+                    num_turns: s.num_turns,
+                    cost_usd: s.cost_usd,
+                    is_error: s.is_error,
+                });
+            }
+            Err(e) => {
+                let _ = tx.send(AppEvent::AgentError(e.to_string()));
+                let _ = tx.send(AppEvent::AgentFinished {
+                    result: Some(format!("error: {e}")),
+                    num_turns: None,
+                    cost_usd: None,
+                    is_error: true,
+                });
+            }
+        }
     });
 }

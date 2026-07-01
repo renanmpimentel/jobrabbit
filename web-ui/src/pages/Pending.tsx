@@ -36,9 +36,9 @@ function PendingItem({ p, onChange }: { p: PendingAction; onChange: () => void }
     <motion.li variants={fadeUp} className="px-5 py-3.5">
       <div className="flex items-center gap-2">
         <Badge tone={meta.tone}>{kindLabel}</Badge>
-        <span className="flex-1 text-sm text-slate-100">{p.description}</span>
+        <span className="flex-1 text-sm text-fg">{p.description}</span>
         {p.url && (
-          <a href={p.url} target="_blank" rel="noreferrer" className="text-xs text-neon hover:underline">
+          <a href={p.url} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
             {t("pending.openJob")}
           </a>
         )}
@@ -86,7 +86,7 @@ export default function Pending() {
       {items.length === 0 ? (
         <Empty>{t("pending.noActions")}</Empty>
       ) : (
-        <motion.ul variants={stagger} initial="hidden" animate="show" className="divide-y divide-edge">
+        <motion.ul variants={stagger} initial="hidden" animate="show" className="divide-y divide-border">
           {items.map((p) => (
             <PendingItem key={p.id} p={p} onChange={invalidate} />
           ))}
