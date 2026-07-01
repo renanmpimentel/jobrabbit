@@ -13,10 +13,13 @@ import {
   Play,
   Loader2,
   Send,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { AgentProvider, useAgent } from "./events";
 import { NavProvider } from "./nav";
 import { isRunning, post, useInvalidate, useSettings, type AgentStatus } from "./hooks";
+import { useTheme } from "./theme";
 import { Button, StatusPill, cn } from "./ui";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -55,13 +58,13 @@ function TabButton({ tab, isActive, onClick }: { tab: typeof TABS[0]; isActive: 
       onClick={onClick}
       className={cn(
         "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-        isActive ? "text-ink-900" : "text-fg-muted hover:text-fg",
+        isActive ? "text-accent" : "text-fg-muted hover:text-fg",
       )}
     >
       {isActive && (
         <motion.span
           layoutId="tab-pill"
-          className="absolute inset-0 rounded-lg bg-neon shadow-glow-sm"
+          className="absolute inset-0 rounded-lg bg-accent/10"
           transition={{ type: "spring", stiffness: 500, damping: 34 }}
         />
       )}
@@ -78,6 +81,7 @@ function Header({ active, setActive }: { active: string; setActive: (s: string) 
   const invalidate = useInvalidate();
   const running = isRunning(status);
   const sv = statusView(status);
+  const { theme, toggle } = useTheme();
 
   async function run() {
     try {
@@ -89,14 +93,14 @@ function Header({ active, setActive }: { active: string; setActive: (s: string) 
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-edge bg-ink-900/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-xl border border-neon/30 bg-neon/10 text-base shadow-glow-sm">
+          <span className="grid h-8 w-8 place-items-center rounded-xl border border-border bg-surface-2 text-base">
             🐇
           </span>
-          <span className="font-display text-lg font-bold tracking-tight text-fg">
-            job<span className="text-neon text-glow">Rabbit</span>
+          <span className="text-lg font-bold tracking-tight text-fg">
+            job<span className="text-accent">Rabbit</span>
           </span>
         </div>
 
@@ -107,6 +111,10 @@ function Header({ active, setActive }: { active: string; setActive: (s: string) 
         </div>
 
         <div className="flex-1" />
+
+        <Button variant="ghost" onClick={toggle} aria-label="Toggle theme">
+          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+        </Button>
 
         <Button variant="primary" onClick={run} disabled={running}>
           {running ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
@@ -129,7 +137,7 @@ function Shell() {
   const tab = TABS.find((t) => t.id === active) ?? TABS[0];
   return (
     <NavProvider navigate={setActive}>
-      <div className="min-h-full">
+      <div className="min-h-full bg-bg">
         <Header active={active} setActive={setActive} />
         <main className="mx-auto max-w-6xl px-4 py-7">
           <AnimatePresence mode="wait">
@@ -173,8 +181,6 @@ function LocaleSync() {
 export default function App() {
   return (
     <AgentProvider>
-      <div className="bg-atmosphere" />
-      <div className="bg-grain" />
       <LocaleSync />
       <Shell />
     </AgentProvider>
