@@ -221,6 +221,21 @@ export default function Applications() {
                                   })}
                                 </div>
                               )}
+                              {app?.screenshot_path && (
+                                <a
+                                  href={`/api/screenshot/${app.id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 inline-block"
+                                  title={t("applications.viewProof")}
+                                >
+                                  <img
+                                    src={`/api/screenshot/${app.id}`}
+                                    alt={t("applications.viewProof")}
+                                    className="h-24 w-auto max-w-[240px] rounded-md border border-edge object-cover object-top transition hover:border-neon/50"
+                                  />
+                                </a>
+                              )}
                             </div>
                           </div>
                         </motion.li>
