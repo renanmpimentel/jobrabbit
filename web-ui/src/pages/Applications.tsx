@@ -3,8 +3,21 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Send, ExternalLink, Loader2, Image } from "lucide-react";
 import { useStats, useApplications, useJobs, useAppliedJobs, useInvalidate, post } from "../hooks";
-import { Card, CardHeader, Badge, Empty, Input, Button, StatCard, cn, Textarea } from "../ui";
+import { Card, CardHeader, Badge, Empty, Input, Button, StatCard, cn, Textarea, Select, ScoreBadge, SectionTitle, SkeletonRows, ErrorState } from "../ui";
 import { fadeUp, stagger } from "../motion";
+import type { Job } from "../hooks";
+import { useToast } from "../toast";
+
+type Band = "strong" | "medium" | "weak" | "unscored";
+const BANDS: Band[] = ["strong", "medium", "weak", "unscored"];
+
+// Fit band per DESIGN.md score scale (presentation grouping only).
+function fitBand(fit: number | null): Band {
+  if (fit == null) return "unscored";
+  if (fit >= 0.75) return "strong";
+  if (fit >= 0.55) return "medium";
+  return "weak";
+}
 
 function statusTone(status: string): string {
   if (status === "applied") return "green";
@@ -30,6 +43,7 @@ export default function Applications() {
   const jobs = useJobs();
   const appliedJobs = useAppliedJobs();
   const invalidate = useInvalidate();
+  const toast = useToast();
 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,8 +63,9 @@ export default function Applications() {
       await post("/apply-url", { url });
       setUrl("");
       invalidate();
+      toast.success(t("common.sent"));
     } catch (e) {
-      alert(String(e));
+      toast.error(String(e));
     } finally {
       setBusy(false);
     }
@@ -110,17 +125,17 @@ export default function Applications() {
         <Card>
           <CardHeader title={t("applications.listTitle")} />
           <div className="space-y-5 px-6 py-5">
-            {/* Filter Buttons */}
-            <div className="flex flex-col gap-2">
+            {/* Filter — segmented control */}
+            <div className="inline-flex rounded-md border border-border bg-surface-2 p-0.5">
               {(["available", "applied"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    "rounded-lg border px-4 py-2 text-left text-sm transition-colors",
+                    "rounded-[5px] px-4 py-1.5 text-sm transition-colors",
                     filter === f
-                      ? "border-accent/40 bg-accent/12 text-accent font-medium"
-                      : "border-border text-fg-muted hover:bg-surface-2",
+                      ? "bg-accent text-accent-fg font-semibold"
+                      : "text-fg-muted hover:text-fg",
                   )}
                 >
                   {f === "available" ? t("applications.filterAvailable") : t("applications.filterApplied")}
@@ -128,48 +143,56 @@ export default function Applications() {
               ))}
             </div>
 
-            {/* Available Jobs */}
+            {/* Available Jobs — grouped by fit band, ScoreBadge unified */}
             {filter === "available" && (
               <>
-                {allJobs.length === 0 ? (
+                {jobs.isLoading ? (
+                  <SkeletonRows rows={4} />
+                ) : jobs.isError ? (
+                  <ErrorState message={t("common.error")} retryLabel={t("common.retry")} onRetry={() => jobs.refetch()} />
+                ) : allJobs.length === 0 ? (
                   <Empty>{t("applications.availableEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-border -mx-6 -mb-5">
-                    {allJobs.map((job) => (
-                      <motion.li
-                        key={job.id}
-                        variants={fadeUp}
-                        className="px-6 py-4 transition hover:bg-surface-2"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              {job.fit_score !== null && (
-                                <Badge tone="iris">
-                                  {Math.round(job.fit_score)}%
-                                </Badge>
-                              )}
-                            </div>
-                            <a
-                              href={job.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="group flex items-center gap-2 truncate text-sm text-fg hover:text-accent mb-2"
-                              title={job.title}
-                            >
-                              <span className="truncate">
-                                {job.title} <span className="text-fg-muted">@ {job.company}</span>
-                              </span>
-                              <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
-                            </a>
-                            <div className="text-xs text-fg-subtle">
-                              {job.source}
-                            </div>
-                          </div>
+                  <div className="space-y-6">
+                    {BANDS.map((band) => {
+                      const items = allJobs
+                        .filter((j) => fitBand(j.fit_score) === band)
+                        .sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1));
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={band}>
+                          <SectionTitle count={items.length}>{t(`applications.bands.${band}`)}</SectionTitle>
+                          <ul className="overflow-hidden rounded-md border border-border divide-y divide-border">
+                            {items.map((job: Job) => (
+                              <motion.li
+                                key={job.id}
+                                variants={fadeUp}
+                                className="group/link flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2"
+                              >
+                                <ScoreBadge value={job.fit_score} />
+                                <a
+                                  href={job.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="min-w-0 flex-1"
+                                  title={job.title}
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="truncate text-sm font-medium leading-snug text-fg transition-colors group-hover/link:text-accent">
+                                      {job.title}
+                                    </span>
+                                    <ExternalLink size={12} className="shrink-0 text-fg-subtle opacity-0 transition group-hover/link:opacity-100" />
+                                  </div>
+                                  <div className="truncate text-sm text-fg-subtle">{job.company}</div>
+                                </a>
+                                {job.source && <span className="hidden font-mono text-xs text-fg-subtle sm:inline">{job.source}</span>}
+                              </motion.li>
+                            ))}
+                          </ul>
                         </div>
-                      </motion.li>
-                    ))}
-                  </ul>
+                      );
+                    })}
+                  </div>
                 )}
               </>
             )}
@@ -177,10 +200,14 @@ export default function Applications() {
             {/* Applied Jobs */}
             {filter === "applied" && (
               <>
-                {appJobs.length === 0 ? (
+                {appliedJobs.isLoading ? (
+                  <SkeletonRows rows={4} />
+                ) : appliedJobs.isError ? (
+                  <ErrorState message={t("common.error")} retryLabel={t("common.retry")} onRetry={() => appliedJobs.refetch()} />
+                ) : appJobs.length === 0 ? (
                   <Empty>{t("applications.appliedEmpty")}</Empty>
                 ) : (
-                  <ul className="divide-y divide-border -mx-6 -mb-5">
+                  <ul className="overflow-hidden rounded-md border border-border divide-y divide-border">
                     {appJobs.map((job) => {
                       const app = appsByJobId.get(job.id);
                       const noteValue = editingNotes[app?.id ?? 0] ?? (app?.notes ?? "");
@@ -216,13 +243,13 @@ export default function Applications() {
                                 href={job.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="group flex items-center gap-2 truncate text-sm text-fg hover:text-accent mb-2"
+                                className="group/link mb-1 flex items-center gap-2"
                                 title={job.title}
                               >
-                                <span className="truncate">
-                                  {job.title} <span className="text-fg-muted">@ {job.company}</span>
+                                <span className="truncate text-sm font-medium leading-snug text-fg transition-colors group-hover/link:text-accent">
+                                  {job.title} <span className="font-normal text-fg-muted">@ {job.company}</span>
                                 </span>
-                                <ExternalLink size={12} className="shrink-0 opacity-0 transition group-hover:opacity-100" />
+                                <ExternalLink size={12} className="shrink-0 text-fg-subtle opacity-0 transition group-hover/link:opacity-100" />
                               </a>
                               {app && (
                                 <div className="text-xs text-fg-subtle mt-2">
@@ -239,34 +266,27 @@ export default function Applications() {
                                     <label className="text-xs text-fg-muted font-medium">
                                       {t("applications.stageLabel")}:
                                     </label>
-                                    <select
+                                    <Select
                                       value={app.stage ?? "applied"}
                                       onChange={(e) => {
                                         post(`/applications/${app.id}/track`, {
                                           stage: e.target.value,
                                           notes: noteValue || null,
                                         })
-                                          .then(() => invalidate())
-                                          .catch((e) => alert(String(e)));
+                                          .then(() => {
+                                            invalidate();
+                                            toast.success(t("common.saved"));
+                                          })
+                                          .catch((e) => toast.error(String(e)));
                                       }}
-                                      className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-fg outline-none transition focus:border-accent/40 focus:ring-1 focus:ring-accent/25"
+                                      className="py-1.5 text-xs"
                                     >
-                                      <option value="applied">
-                                        {t("applications.stage.applied")}
-                                      </option>
-                                      <option value="screening">
-                                        {t("applications.stage.screening")}
-                                      </option>
-                                      <option value="interview">
-                                        {t("applications.stage.interview")}
-                                      </option>
-                                      <option value="offer">
-                                        {t("applications.stage.offer")}
-                                      </option>
-                                      <option value="rejected">
-                                        {t("applications.stage.rejected")}
-                                      </option>
-                                    </select>
+                                      <option value="applied">{t("applications.stage.applied")}</option>
+                                      <option value="screening">{t("applications.stage.screening")}</option>
+                                      <option value="interview">{t("applications.stage.interview")}</option>
+                                      <option value="offer">{t("applications.stage.offer")}</option>
+                                      <option value="rejected">{t("applications.stage.rejected")}</option>
+                                    </Select>
                                     <Badge tone={stageTone(app.stage)}>
                                       {t(`applications.stage.${app.stage ?? "applied"}`)}
                                     </Badge>
@@ -290,13 +310,14 @@ export default function Applications() {
                                         })
                                           .then(() => {
                                             invalidate();
+                                            toast.success(t("common.saved"));
                                             setEditingNotes((prev) => {
                                               const next = { ...prev };
                                               delete next[app.id];
                                               return next;
                                             });
                                           })
-                                          .catch((e) => alert(String(e)));
+                                          .catch((e) => toast.error(String(e)));
                                       }}
                                       placeholder={t("applications.notesPlaceholder")}
                                       className="text-xs resize-none"

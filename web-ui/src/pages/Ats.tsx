@@ -3,13 +3,46 @@ import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import { Download, Copy, Check } from "lucide-react";
 import { useCvReview, useCvVersion, useJobs, useInvalidate, post } from "../hooks";
-import { Card, CardHeader, Button, Textarea, Empty } from "../ui";
+import { Card, CardHeader, Button, Textarea, Empty, Select } from "../ui";
 import { cn } from "../ui";
+import { useToast } from "../toast";
 
 function scoreColor(s: number): string {
-  if (s >= 75) return "text-emerald-400";
-  if (s >= 50) return "text-amber-300";
-  return "text-red-400";
+  if (s >= 75) return "text-success";
+  if (s >= 50) return "text-warn";
+  return "text-danger";
+}
+
+// ATS score (0–100) as a compact ring/gauge — arc color follows the band.
+function ScoreRing({ value }: { value: number }) {
+  const radius = 26;
+  const circ = 2 * Math.PI * radius;
+  const pct = Math.max(0, Math.min(100, value)) / 100;
+  return (
+    <div
+      className={cn("relative grid h-[72px] w-[72px] shrink-0 place-items-center", scoreColor(value))}
+      role="img"
+      aria-label={`ATS ${value}/100`}
+    >
+      <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="rgb(var(--border))" strokeWidth="6" />
+        <circle
+          cx="36"
+          cy="36"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={`${circ * pct} ${circ}`}
+        />
+      </svg>
+      <div className="absolute text-center leading-none">
+        <div className="text-base font-semibold tabular-nums text-fg">{value}</div>
+        <div className="mt-0.5 text-[10px] text-fg-subtle">/100</div>
+      </div>
+    </div>
+  );
 }
 
 type Mode = "general" | "job" | "paste";
@@ -20,6 +53,7 @@ export default function Ats() {
   const version = useCvVersion();
   const jobs = useJobs();
   const invalidate = useInvalidate();
+  const toast = useToast();
 
   const [mode, setMode] = useState<Mode>("general");
   const [jobId, setJobId] = useState<number | "">("");
@@ -44,8 +78,9 @@ export default function Ats() {
     try {
       await post(path, { target: currentTarget() });
       invalidate();
+      toast.success(t("common.started"));
     } catch (e) {
-      alert(String(e));
+      toast.error(String(e));
     } finally {
       setBusy(false);
     }
@@ -55,6 +90,7 @@ export default function Ats() {
     if (!version.data) return;
     await navigator.clipboard.writeText(version.data.content);
     setCopied(true);
+    toast.success(t("ats.copied"));
     setTimeout(() => setCopied(false), 1500);
   }
 
@@ -62,21 +98,19 @@ export default function Ats() {
   const v = version.data;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <div className="space-y-4 lg:col-span-2">
+    <div className="grid items-start gap-5 lg:grid-cols-3">
+      <div className="space-y-5 lg:col-span-2">
         <Card>
           <CardHeader
             title={t("ats.title")}
             hint={r ? `target: ${r.target}` : t("ats.notEvaluated")}
-            right={
-              r ? <span className={cn("text-2xl font-bold", scoreColor(r.score))}>{r.score}/100</span> : undefined
-            }
+            right={r ? <ScoreRing value={r.score} /> : undefined}
           />
-          <div className="p-4">
+          <div className="p-6">
             {!r ? (
               <Empty>{t("ats.noReview")}</Empty>
             ) : (
-              <div className="md text-sm text-fg">
+              <div className="md">
                 <Markdown>{r.report}</Markdown>
               </div>
             )}
@@ -93,7 +127,7 @@ export default function Ats() {
                   <Button variant="ghost" onClick={copy}>
                     {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? t("ats.copied") : t("ats.copy")}
                   </Button>
-                  <span className="flex items-center overflow-hidden rounded-xl border border-border">
+                  <span className="flex items-center overflow-hidden rounded-md border border-border">
                     <span className="bg-surface-2 px-2.5 py-1.5 text-xs text-fg-muted">
                       <Download size={14} className="inline" /> {t("ats.download")}
                     </span>
@@ -111,11 +145,11 @@ export default function Ats() {
               ) : undefined
             }
           />
-          <div className="p-4">
+          <div className="p-6">
             {!v ? (
               <Empty>{t("ats.noCvVersion")}</Empty>
             ) : (
-              <div className="md max-h-[55vh] overflow-auto scroll-thin rounded-xl border border-border bg-surface-2 p-4 text-sm text-fg">
+              <div className="md max-h-[55vh] overflow-auto scroll-thin rounded-md border border-border bg-surface-2 p-4">
                 <Markdown>{v.content}</Markdown>
               </div>
             )}
@@ -123,10 +157,10 @@ export default function Ats() {
         </Card>
       </div>
 
-      <div>
+      <div className="lg:sticky lg:top-20">
         <Card>
           <CardHeader title={t("ats.targetAndActions")} />
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 p-5">
             <div className="space-y-2">
               <label className="text-xs text-fg-muted">{t("ats.targetLabel")}</label>
               <div className="flex flex-col gap-1.5">
@@ -135,8 +169,10 @@ export default function Ats() {
                     key={m}
                     onClick={() => setMode(m)}
                     className={cn(
-                      "rounded-lg border px-3 py-1.5 text-left text-sm transition",
-                      mode === m ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-fg-muted hover:bg-surface-2",
+                      "rounded-md border px-3 py-1.5 text-left text-sm transition-colors",
+                      mode === m
+                        ? "border-border-strong bg-surface-2 font-medium text-fg"
+                        : "border-border text-fg-muted hover:bg-surface-2 hover:text-fg",
                     )}
                   >
                     {m === "general" ? t("ats.generalQuality") : m === "job" ? t("ats.againstJob") : t("ats.pasteDescription")}
@@ -146,10 +182,10 @@ export default function Ats() {
             </div>
 
             {mode === "job" && (
-              <select
+              <Select
+                wrapperClassName="w-full"
                 value={jobId}
                 onChange={(e) => setJobId(e.target.value ? Number(e.target.value) : "")}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg"
               >
                 <option value="">{t("ats.selectJob")}</option>
                 {jobs.data?.map((j) => (
@@ -157,7 +193,7 @@ export default function Ats() {
                     {j.title} @ {j.company}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
 
             {mode === "paste" && (

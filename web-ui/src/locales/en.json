@@ -1,14 +1,24 @@
 {
+  "brand": {
+    "tagline": "The Daily",
+    "edition": "Edition"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Profile",
     "pending": "Pending",
-    "session": "Session",
+    "pendingCount": "{{count}} pending",
+    "session": "Execution",
     "ats": "ATS",
     "applications": "Jobs",
     "feedback": "Feedback",
-    "doctor": "Health",
-    "config": "Config"
+    "doctor": "Status",
+    "config": "Config",
+    "groups": {
+      "work": "Work",
+      "resume": "Resume & Profile",
+      "agent": "Agent"
+    }
   },
   "header": {
     "running": "Running",
@@ -20,7 +30,14 @@
     "runningEllipsis": "Running…"
   },
   "common": {
-    "language": "Language"
+    "language": "Language",
+    "error": "Couldn't load data.",
+    "retry": "Try again",
+    "saved": "Saved",
+    "done": "Done",
+    "started": "Search started",
+    "removed": "Removed",
+    "sent": "Sent to the agent"
   },
   "status": {
     "running": "Running",
@@ -38,10 +55,11 @@
     "applied": "Applied",
     "pendingActions": "Pending",
     "recentJobs": "Recent Jobs",
-    "recentJobsHint": "sorted by discovery date",
+    "recentJobsHint": "ranked by fit",
     "noJobs": "No jobs yet — click \"Run search\" at the top."
   },
   "profile": {
+    "title": "Profile",
     "background": "Background",
     "cvBase": "Base CV",
     "saveProfile": "Save Profile",
@@ -72,10 +90,25 @@
     },
     "openJob": "open job ↗",
     "approve": "Approve & Submit",
+    "reviewContent": "Review content",
+    "cvLabel": "Proposed CV",
+    "coverLabel": "Cover letter",
     "answerPlaceholder": "your answer…",
     "answer": "Answer",
     "resolve": "Resolve",
-    "noActions": "No pending actions. 🎉"
+    "view": "View",
+    "noActions": "No pending actions.",
+    "noActionsHint": "When the agent needs a decision or gets blocked, it shows up here.",
+    "error": "Couldn't load pending actions.",
+    "retry": "Try again",
+    "tiers": {
+      "blocking": "Blocking the agent",
+      "blockingHint": "The agent is stuck until you handle these.",
+      "decision": "Need your decision",
+      "decisionHint": "Answer so the agent can continue.",
+      "routine": "Routine",
+      "routineHint": "Approve and submit."
+    }
   },
   "session": {
     "title": "Agent Session",
@@ -88,7 +121,10 @@
     "continueTitle": "Continue after manual action",
     "continueHint": "After you handle a blocker in Chrome (captcha/login/field), tell the agent to resume.",
     "continuePlaceholder": "Optional instruction (or leave blank to just continue)",
-    "continueButton": "Continue"
+    "continueButton": "Continue",
+    "waitingTitle": "The agent is waiting for you",
+    "goResolve": "Resolve",
+    "waitingMore": "+{{count}} more"
   },
   "feedback": {
     "title": "Agent Feedback",
@@ -133,6 +169,8 @@
   "config": {
     "loading": "loading…",
     "application": "Application",
+    "humanReview": "Human review before filling",
+    "humanReviewHint": "The agent always generates the CV/cover letter and stops for your approval before filling or submitting any form on a job site — this holds even in Autonomous/Hybrid modes. Your personal data is filled without extra approval.",
     "modeLabel": "Application Mode",
     "modeHint": "review = prepares only; autonomous = submits; hybrid = by fit",
     "hybridLabel": "Hybrid Threshold (fit)",
@@ -190,6 +228,12 @@
     "jobNotFound": "(job details not found)",
     "filterAvailable": "Available",
     "filterApplied": "Applied",
+    "bands": {
+      "strong": "Strong fit",
+      "medium": "Medium fit",
+      "weak": "Low fit",
+      "unscored": "Not scored"
+    },
     "availableEmpty": "No available jobs yet.",
     "appliedEmpty": "No applied jobs yet.",
     "status": {

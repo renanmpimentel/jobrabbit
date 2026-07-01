@@ -91,6 +91,7 @@ export interface Settings {
   use_chrome: boolean;
   bypass_permissions: boolean;
   apply_mode: string;
+  require_human_review: boolean;
   hybrid_threshold: number;
   dry_run: boolean;
   language_filter: boolean;
@@ -112,12 +113,18 @@ export interface DoctorCheck {
 // Enum externamente etiquetado: "Idle" | "Running" | { Error: string }.
 export type AgentStatus = "Idle" | "Running" | { Error: string };
 
+export interface PendingNotify {
+  kind: string;
+  description: string;
+}
+
 export interface WebEvent {
   event: string;
   logs: string[];
   status: AgentStatus | null;
   focus_tab: number | null;
   refresh: boolean;
+  notify?: PendingNotify | null;
 }
 
 // ---- fetch helpers ---------------------------------------------------------

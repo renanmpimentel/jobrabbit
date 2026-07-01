@@ -2,40 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light mode (default) */
+/* ============================================================
+   jobRabbit — Design System (DESIGN.md) — LIGHT ONLY
+   Notion/Height: superfícies quase brancas, bordas finas,
+   hierarquia por tamanho/peso, cor com significado.
+   Tokens = hexes exatos do DESIGN.md (RGB para alpha do Tailwind).
+   ============================================================ */
+
 :root {
   color-scheme: light;
-  --bg: 251 251 249;
-  --surface: 255 255 255;
-  --surface-2: 246 246 243;
-  --border: 233 233 228;
-  --fg: 26 26 23;
-  --fg-muted: 107 107 99;
-  --fg-subtle: 158 158 148;
-  --accent: 15 122 84;
-  --accent-fg: 255 255 255;
-  --success: 22 143 74;
-  --warn: 181 122 12;
-  --danger: 194 58 58;
-  --info: 46 108 168;
-}
 
-/* Dark mode */
-.dark {
-  color-scheme: dark;
-  --bg: 17 19 16;
-  --surface: 24 26 22;
-  --surface-2: 30 33 28;
-  --border: 42 45 38;
-  --fg: 236 236 230;
-  --fg-muted: 154 156 146;
-  --fg-subtle: 108 110 100;
-  --accent: 61 214 140;
-  --accent-fg: 10 20 14;
-  --success: 74 200 130;
-  --warn: 224 168 74;
-  --danger: 240 130 130;
-  --info: 120 176 232;
+  /* Superfícies */
+  --bg: 250 250 249;         /* bg/subtle #FAFAF9 — fundo da app + sidebar */
+  --surface: 255 255 255;    /* bg/base   #FFFFFF — cards */
+  --surface-2: 245 245 244;  /* bg/muted  #F5F5F4 — hover de linha, blocos 2º */
+  --sidebar: 250 250 249;    /* bg/subtle */
+
+  /* Bordas */
+  --border: 234 234 232;         /* border/subtle  #EAEAE8 */
+  --border-strong: 224 224 221;  /* border/default #E0E0DD */
+
+  /* Texto */
+  --fg: 26 26 24;            /* text/primary   #1A1A18 */
+  --fg-muted: 107 107 102;   /* text/secondary #6B6B66 */
+  --fg-subtle: 154 154 148;  /* text/tertiary  #9A9A94 */
+
+  /* Accent (um único tom) */
+  --accent: 79 70 229;       /* #4F46E5 */
+  --accent-hover: 67 56 202; /* #4338CA */
+  --accent-fg: 255 255 255;
+
+  /* Semânticos = números da escala de score/status do DESIGN.md */
+  --success: 6 118 71;       /* #067647 verde */
+  --warn: 181 71 8;          /* #B54708 âmbar */
+  --danger: 180 35 24;       /* #B42318 vermelho */
+  --info: 23 92 211;         /* #175CD3 azul (decisão) */
+
+  /* Tints (faixa de fundo) */
+  --success-tint: 236 253 243; /* #ECFDF3 */
+  --warn-tint: 254 251 235;    /* #FEFBEB */
+  --danger-tint: 254 243 242;  /* #FEF3F2 */
+  --info-tint: 239 244 255;    /* #EFF4FF */
 }
 
 html,
@@ -48,73 +55,96 @@ body {
   margin: 0;
   background: rgb(var(--bg));
   color: rgb(var(--fg));
-  font-family: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "ss01", "cv01";
+  font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Foco visível (a11y) — componentes optam via .focus-ring */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--bg)), 0 0 0 4px rgb(var(--accent) / 0.5);
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--surface-2)) 0%,
+    rgb(var(--border) / 0.7) 50%,
+    rgb(var(--surface-2)) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
 }
 
 /* ---- Scrollbar discreta ---- */
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgb(var(--border)) transparent;
+  scrollbar-color: rgb(var(--border-strong)) transparent;
 }
-.scroll-thin::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
+.scroll-thin::-webkit-scrollbar { width: 10px; height: 10px; }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: rgb(var(--border) / 0.5);
-  border-radius: 5px;
+  background: rgb(var(--border-strong) / 0.8);
+  border-radius: 6px;
 }
-.scroll-thin::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--border) / 0.7);
-}
+.scroll-thin::-webkit-scrollbar-thumb:hover { background: rgb(var(--border-strong)); }
 
-/* ---- Markdown (relatório/preview ATS) ---- */
-.md {
-  line-height: 1.6;
-}
-.md h1,
-.md h2,
-.md h3 {
-  font-family: "Bricolage Grotesque Variable", sans-serif;
-  font-weight: 650;
-  color: #f1f5fb;
-  margin: 1em 0 0.4em;
+/* ---- Markdown (relatório ATS / feedback) — coluna de artigo ---- */
+.md { line-height: 1.7; color: rgb(var(--fg)); font-size: 14px; }
+.md h1, .md h2, .md h3 {
+  font-weight: 600;
+  color: rgb(var(--fg));
+  margin: 1.1em 0 0.4em;
   letter-spacing: -0.01em;
+  line-height: 1.25;
 }
-.md h1 {
-  font-size: 1.3rem;
-}
+.md h1 { font-size: 20px; }
 .md h2 {
-  font-size: 1.08rem;
+  font-size: 16px;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid rgb(var(--border));
 }
-.md h3 {
-  font-size: 0.96rem;
-}
-.md p {
-  margin: 0.5em 0;
-}
-.md ul,
-.md ol {
-  margin: 0.4em 0;
-  padding-left: 1.25rem;
-  list-style: disc;
-}
-.md li {
-  margin: 0.2em 0;
-}
-.md strong {
-  color: #f8fafc;
-}
+.md h3 { font-size: 14px; }
+.md p { margin: 0.6em 0; }
+.md ul, .md ol { margin: 0.5em 0; padding-left: 1.25rem; list-style: disc; }
+.md ol { list-style: decimal; }
+.md li { margin: 0.25em 0; }
+.md strong { color: rgb(var(--fg)); font-weight: 600; }
 .md a {
-  color: rgb(var(--info));
+  color: rgb(var(--accent));
+  text-underline-offset: 2px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+.md blockquote {
+  border-left: 3px solid rgb(var(--border-strong));
+  margin: 0.8em 0;
+  padding: 0.1em 0 0.1em 1em;
+  color: rgb(var(--fg-muted));
 }
 .md code {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   background: rgb(var(--surface-2));
   padding: 0.1em 0.34em;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: 0.85em;
 }
+.md pre {
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--border));
+  border-radius: 6px;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+}
+.md pre code { background: transparent; padding: 0; }
+.md hr { border: 0; border-top: 1px solid rgb(var(--border)); margin: 1.2em 0; }

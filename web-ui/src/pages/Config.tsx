@@ -1,8 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Loader2 } from "lucide-react";
 import { useSettings, useAnswers, useInvalidate, post, type Settings } from "../hooks";
 import { LANGUAGES } from "../i18n";
-import { Card, CardHeader, Button, Input, Toggle } from "../ui";
+import { Card, CardHeader, Button, Input, Toggle, Select } from "../ui";
+import { useToast } from "../toast";
 
 // Identity field keys (must match IDENTITY_FIELDS in src/db/models.rs) paired
 // with their i18n label key.
@@ -39,8 +41,10 @@ export default function Config() {
   const settings = useSettings();
   const answers = useAnswers();
   const invalidate = useInvalidate();
+  const toast = useToast();
   const [s, setS] = useState<Settings | null>(null);
   const [ident, setIdent] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (settings.data) setS(settings.data);
@@ -61,13 +65,19 @@ export default function Config() {
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS({ ...s, [k]: v });
 
   // Saves both the settings and the personal-data (identity) answers in one go.
-  const save = () =>
+  const save = () => {
+    setSaving(true);
     Promise.all([
       post("/settings", s),
       ...IDENTITY_FIELDS.map((f) => post("/answers", { key: f.key, value: ident[f.key] ?? "" })),
     ])
-      .then(invalidate)
-      .catch((e) => alert(String(e)));
+      .then(() => {
+        invalidate();
+        toast.success(t("common.saved"));
+      })
+      .catch((e) => toast.error(String(e)))
+      .finally(() => setSaving(false));
+  };
 
   // Changing the language updates both the UI (i18n) and the backend `locale`
   // (so the agent searches/writes in the same language), persisting immediately.
@@ -76,31 +86,37 @@ export default function Config() {
     const backendLocale = code === "pt-BR" ? "pt-br" : "en";
     const next = { ...s, locale: backendLocale };
     setS(next);
-    post("/settings", next).then(invalidate).catch((e) => alert(String(e)));
+    post("/settings", next)
+      .then(() => {
+        invalidate();
+        toast.success(t("common.saved"));
+      })
+      .catch((e) => toast.error(String(e)));
   };
 
   const resetRuns = () => {
     if (!confirm(t("config.resetRunsConfirm"))) return;
-    post("/reset-runs").then(invalidate).catch((e) => alert(String(e)));
+    post("/reset-runs")
+      .then(() => {
+        invalidate();
+        toast.success(t("common.done"));
+      })
+      .catch((e) => toast.error(String(e)));
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-5">
       <Card>
         <CardHeader title={t("common.language")} />
         <div className="divide-y divide-border">
           <Row label={t("common.language")}>
-            <select
-              value={i18n.language}
-              onChange={(e) => changeLanguage(e.target.value)}
-              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
-            >
+            <Select value={i18n.language} onChange={(e) => changeLanguage(e.target.value)} className="py-1.5">
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
                   {lang.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </Row>
         </div>
       </Card>
@@ -108,16 +124,18 @@ export default function Config() {
       <Card>
         <CardHeader title={t("config.application")} />
         <div className="divide-y divide-border">
+          <Row label={t("config.humanReview")} hint={t("config.humanReviewHint")}>
+            <Toggle
+              on={s.require_human_review}
+              onClick={() => set("require_human_review", !s.require_human_review)}
+            />
+          </Row>
           <Row label={t("config.modeLabel")} hint={t("config.modeHint")}>
-            <select
-              value={s.apply_mode}
-              onChange={(e) => set("apply_mode", e.target.value)}
-              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
-            >
+            <Select value={s.apply_mode} onChange={(e) => set("apply_mode", e.target.value)} className="py-1.5">
               <option value="review">review</option>
               <option value="autonomous">autonomous</option>
               <option value="hybrid">hybrid</option>
-            </select>
+            </Select>
           </Row>
           <Row label={t("config.hybridLabel")} hint={t("config.hybridHint")}>
             <Input
@@ -137,15 +155,11 @@ export default function Config() {
             <Toggle on={s.language_filter} onClick={() => set("language_filter", !s.language_filter)} />
           </Row>
           <Row label={t("config.workModelLabel")} hint={t("config.workModelHint")}>
-            <select
-              value={s.work_model}
-              onChange={(e) => set("work_model", e.target.value)}
-              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-fg"
-            >
+            <Select value={s.work_model} onChange={(e) => set("work_model", e.target.value)} className="py-1.5">
               <option value="remote">{t("config.workModelRemote")}</option>
               <option value="onsite">{t("config.workModelOnsite")}</option>
               <option value="hybrid">{t("config.workModelHybrid")}</option>
-            </select>
+            </Select>
           </Row>
         </div>
       </Card>
@@ -222,7 +236,8 @@ export default function Config() {
         </div>
       </Card>
 
-      <Button variant="primary" onClick={save}>
+      <Button variant="primary" onClick={save} disabled={saving}>
+        {saving && <Loader2 size={14} className="animate-spin" />}
         {t("config.save")}
       </Button>
     </div>

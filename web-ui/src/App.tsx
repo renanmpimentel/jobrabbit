@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -13,16 +13,12 @@ import {
   Play,
   Loader2,
   Send,
-  Sun,
-  Moon,
-  Menu,
-  X,
 } from "lucide-react";
 import { AgentProvider, useAgent } from "./events";
-import { NavProvider } from "./nav";
-import { isRunning, post, useInvalidate, useSettings, type AgentStatus } from "./hooks";
-import { useTheme } from "./theme";
-import { Button, StatusPill, cn } from "./ui";
+import { NavProvider, useNav } from "./nav";
+import { isRunning, post, useInvalidate, usePending, useSettings, type AgentStatus } from "./hooks";
+import { AppShell, Button, SidebarBrand, StatusPill, cn } from "./ui";
+import { useToast } from "./toast";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Pending from "./pages/Pending";
@@ -34,12 +30,12 @@ import Config from "./pages/Config";
 import Doctor from "./pages/Doctor";
 
 const TABS = [
-  { id: "dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, el: <Dashboard /> },
+  { id: "dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, el: <Dashboard />, wide: true },
   { id: "profile", labelKey: "nav.profile", icon: User, el: <Profile /> },
   { id: "pending", labelKey: "nav.pending", icon: AlertTriangle, el: <Pending /> },
   { id: "session", labelKey: "nav.session", icon: Terminal, el: <Session /> },
-  { id: "ats", labelKey: "nav.ats", icon: FileCheck2, el: <Ats /> },
-  { id: "applications", labelKey: "nav.applications", icon: Send, el: <Applications /> },
+  { id: "ats", labelKey: "nav.ats", icon: FileCheck2, el: <Ats />, wide: true },
+  { id: "applications", labelKey: "nav.applications", icon: Send, el: <Applications />, wide: true },
   { id: "feedback", labelKey: "nav.feedback", icon: TrendingUp, el: <FeedbackPage /> },
   { id: "doctor", labelKey: "nav.doctor", icon: Stethoscope, el: <Doctor /> },
   { id: "config", labelKey: "nav.config", icon: SettingsIcon, el: <Config /> },
@@ -51,192 +47,177 @@ function statusView(s: AgentStatus): { tone: "neon" | "warn" | "danger" | "muted
   return { tone: "danger", statusKey: "status.error", pulse: false };
 }
 
-function SidebarNavItem({ tab, isActive, onClick }: { tab: typeof TABS[0]; isActive: boolean; onClick: () => void }) {
+// Lookup tab metadata by internal id (ids/routes are unchanged — grouping is display-only).
+const TAB_BY_ID = Object.fromEntries(TABS.map((tab) => [tab.id, tab]));
+
+// Sidebar grouping (labels only) — Config is pinned to the footer.
+const NAV_GROUPS: { key: string; items: string[] }[] = [
+  { key: "work", items: ["dashboard", "applications", "pending"] },
+  { key: "resume", items: ["profile", "ats"] },
+  { key: "agent", items: ["session", "feedback", "doctor"] },
+];
+
+function NavItem({
+  id,
+  active,
+  onPick,
+  badge,
+}: {
+  id: string;
+  active: string;
+  onPick: (id: string) => void;
+  badge?: number;
+}) {
   const { t } = useTranslation();
+  const tab = TAB_BY_ID[id];
+  if (!tab) return null;
   const Icon = tab.icon;
+  const isActive = active === id;
   return (
     <button
-      onClick={onClick}
+      onClick={() => onPick(id)}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
-        "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
-        isActive
-          ? "bg-accent/12 text-accent font-medium"
-          : "text-fg-muted hover:text-fg hover:bg-surface-2",
+        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+        isActive ? "bg-surface-2 font-medium text-fg" : "text-fg-muted hover:bg-surface-2 hover:text-fg",
       )}
     >
-      <Icon size={18} className="shrink-0" />
+      <Icon size={17} className={cn("shrink-0", isActive ? "text-accent" : "text-fg-subtle")} />
       <span>{t(tab.labelKey)}</span>
-      {isActive && (
-        <motion.span
-          layoutId="sidebar-active"
-          className="absolute -left-0.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
-          transition={{ type: "spring", stiffness: 500, damping: 34 }}
-        />
+      {badge != null && badge > 0 && (
+        <span
+          aria-label={t("nav.pendingCount", { count: badge })}
+          className="ml-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-danger px-1.5 text-[11px] font-semibold leading-none text-white"
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
       )}
     </button>
   );
 }
 
-function Sidebar({ active, setActive, open, setOpen }: { active: string; setActive: (s: string) => void; open: boolean; setOpen: (o: boolean) => void }) {
+function Sidebar({ active, onPick }: { active: string; onPick: (id: string) => void }) {
   const { t } = useTranslation();
-
+  const pending = usePending();
+  const pendingCount = pending.data?.length ?? 0;
   return (
     <>
-      {/* Overlay for mobile */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key="sidebar-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r border-border bg-surface transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        {/* Brand */}
-        <div className="flex items-center gap-3 border-b border-border px-5 py-5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface-2 text-base font-semibold">
-            🐇
-          </span>
-          <span className="text-base font-bold tracking-tight text-fg">
-            job<span className="text-accent">Rabbit</span>
-          </span>
-          <button
-            onClick={() => setOpen(false)}
-            className="ml-auto lg:hidden"
-            aria-label="Close sidebar"
-          >
-            <X size={18} className="text-fg-muted" />
-          </button>
-        </div>
-
-        {/* Nav items */}
-        <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 py-4 scroll-thin">
-          {TABS.map((tab) => (
-            <SidebarNavItem
-              key={tab.id}
-              tab={tab}
-              isActive={active === tab.id}
-              onClick={() => {
-                setActive(tab.id);
-                setOpen(false); // Close sidebar on mobile after click
-              }}
-            />
-          ))}
-        </nav>
-      </aside>
+      <SidebarBrand onClose={() => onPick(active)}>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-2 text-sm">🐇</span>
+        <span className="text-base font-semibold tracking-tight text-fg">jobRabbit</span>
+      </SidebarBrand>
+      <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4 scroll-thin">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.key} className="space-y-0.5">
+            <div className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-fg-subtle">
+              {t(`nav.groups.${group.key}`)}
+            </div>
+            {group.items.map((id) => (
+              <NavItem key={id} id={id} active={active} onPick={onPick} badge={id === "pending" ? pendingCount : undefined} />
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="border-t border-border px-2.5 py-2">
+        <NavItem id="config" active={active} onPick={onPick} />
+      </div>
     </>
   );
 }
 
-function Topbar({ active, setActive, sidebarOpen, setSidebarOpen }: { active: string; setActive: (s: string) => void; sidebarOpen: boolean; setSidebarOpen: (o: boolean) => void }) {
+function HeaderActions() {
   const { t } = useTranslation();
   const { status, connected } = useAgent();
   const invalidate = useInvalidate();
+  const toast = useToast();
   const running = isRunning(status);
   const sv = statusView(status);
-  const { theme, toggle } = useTheme();
-  const tab = TABS.find((t) => t.id === active) ?? TABS[0];
 
   async function run() {
     try {
       await post("/run");
       invalidate();
+      toast.success(t("common.started"));
     } catch (e) {
-      alert(String(e));
+      toast.error(String(e));
     }
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-surface">
-      <div className="flex items-center justify-between gap-4 px-6 py-4">
-        {/* Left: page title + hamburger */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden"
-            aria-label="Toggle sidebar"
-          >
-            <Menu size={18} className="text-fg-muted" />
-          </button>
-          <h1 className="text-base font-semibold text-fg">{t(tab.labelKey)}</h1>
-        </div>
-
-        {/* Right: pills + buttons */}
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block" title={connected ? t("header.connected") : t("header.reconnecting")}>
-            <StatusPill tone={sv.tone} pulse={sv.pulse}>
-              {t(sv.statusKey)}
-            </StatusPill>
-          </div>
-
-          <Button variant="ghost" onClick={toggle} aria-label="Toggle theme" size="sm">
-            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-          </Button>
-
-          <Button variant="primary" onClick={run} disabled={running} size="sm">
-            {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-            <span className="hidden sm:inline">{running ? t("header.runningEllipsis") : t("header.runSearch")}</span>
-          </Button>
-        </div>
+    <>
+      <div className="hidden sm:block" title={connected ? t("header.connected") : t("header.reconnecting")}>
+        <StatusPill tone={sv.tone} pulse={sv.pulse}>
+          {t(sv.statusKey)}
+        </StatusPill>
       </div>
-    </header>
+      <Button variant="primary" onClick={run} disabled={running} size="sm">
+        {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+        <span className="hidden sm:inline">{running ? t("header.runningEllipsis") : t("header.runSearch")}</span>
+      </Button>
+    </>
   );
 }
 
+// Raises an in-app toast whenever a new pending action arrives, with a shortcut
+// to the Pending tab. Lives inside NavProvider so it can navigate.
+function PendingWatcher() {
+  const { t } = useTranslation();
+  const { lastPending } = useAgent();
+  const nav = useNav();
+  const toast = useToast();
+  const seen = useRef(0);
+
+  useEffect(() => {
+    if (!lastPending || lastPending.seq === seen.current) return;
+    seen.current = lastPending.seq;
+    const kindLabel = t(`pending.kind.${lastPending.kind}`, lastPending.kind);
+    toast.warn(`${kindLabel}: ${lastPending.description}`, {
+      action: { label: t("pending.view"), onClick: () => nav("pending") },
+    });
+  }, [lastPending, t, toast, nav]);
+
+  return null;
+}
+
 function Shell() {
+  const { t } = useTranslation();
   const [active, setActive] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const tab = TABS.find((t) => t.id === active) ?? TABS[0];
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const tab = TABS.find((x) => x.id === active) ?? TABS[0];
+
+  const pick = (id: string) => {
+    setActive(id);
+    setMobileOpen(false);
+  };
 
   return (
     <NavProvider navigate={setActive}>
-      <div className="flex min-h-screen bg-bg">
-        {/* Sidebar */}
-        <Sidebar active={active} setActive={setActive} open={sidebarOpen} setOpen={setSidebarOpen} />
-
-        {/* Main area */}
-        <div className="flex flex-1 flex-col">
-          {/* Topbar */}
-          <Topbar active={active} setActive={setActive} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-          {/* Content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={active}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {tab.el}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </main>
-        </div>
-      </div>
+      <PendingWatcher />
+      <AppShell
+        sidebar={<Sidebar active={active} onPick={pick} />}
+        title={t(tab.labelKey)}
+        actions={<HeaderActions />}
+        wide={tab.wide}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {tab.el}
+          </motion.div>
+        </AnimatePresence>
+      </AppShell>
     </NavProvider>
   );
 }
 
-// Keeps the backend `locale` in sync with the language shown in the UI. The UI
-// language can come from the browser detector (i18n) without ever touching the
-// backend, which would leave the agent (ATS/search/feedback) running in the wrong
-// language. On load, if they diverge, the displayed language wins and is pushed
-// to the backend.
+// Keeps the backend `locale` in sync with the language shown in the UI.
 function LocaleSync() {
   const { i18n } = useTranslation();
   const settings = useSettings();

@@ -7,7 +7,7 @@ import { cn } from "../ui";
 import { fadeUp, stagger } from "../motion";
 
 const META: Record<CheckStatus, { icon: typeof CheckCircle2; color: string; ring: string }> = {
-  Ok: { icon: CheckCircle2, color: "text-accent", ring: "border-accent/30" },
+  Ok: { icon: CheckCircle2, color: "text-success", ring: "border-success/30" },
   Warn: { icon: AlertTriangle, color: "text-warn", ring: "border-warn/30" },
   Fail: { icon: XCircle, color: "text-danger", ring: "border-danger/40" },
 };
@@ -22,7 +22,7 @@ export default function Doctor() {
   );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="space-y-4">
       <Card>
         <CardHeader
           title={t("doctor.title")}
@@ -30,7 +30,7 @@ export default function Doctor() {
           right={
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-fg-muted">
-                <span className="text-accent">{counts.Ok ?? 0} {t("doctor.ok")}</span> ·{" "}
+                <span className="text-success">{counts.Ok ?? 0} {t("doctor.ok")}</span> ·{" "}
                 <span className="text-warn">{t("doctor.warnings", { count: counts.Warn ?? 0 })}</span> ·{" "}
                 <span className="text-danger">{t("doctor.errors", { count: counts.Fail ?? 0 })}</span>
               </span>

@@ -1,14 +1,24 @@
 {
+  "brand": {
+    "tagline": "Edição Diária",
+    "edition": "Edição"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Perfil",
     "pending": "Pendências",
-    "session": "Sessão",
+    "pendingCount": "{{count}} pendência(s)",
+    "session": "Execução",
     "ats": "ATS",
     "applications": "Vagas",
     "feedback": "Feedback",
-    "doctor": "Saúde",
-    "config": "Config"
+    "doctor": "Status",
+    "config": "Config",
+    "groups": {
+      "work": "Trabalho",
+      "resume": "Currículo & Perfil",
+      "agent": "Agente"
+    }
   },
   "header": {
     "running": "rodando",
@@ -20,7 +30,14 @@
     "runningEllipsis": "Rodando…"
   },
   "common": {
-    "language": "Idioma"
+    "language": "Idioma",
+    "error": "Não foi possível carregar os dados.",
+    "retry": "Tentar de novo",
+    "saved": "Salvo",
+    "done": "Pronto",
+    "started": "Busca iniciada",
+    "removed": "Removido",
+    "sent": "Enviado ao agente"
   },
   "status": {
     "running": "rodando",
@@ -38,10 +55,11 @@
     "applied": "Aplicadas",
     "pendingActions": "Pendências",
     "recentJobs": "Vagas recentes",
-    "recentJobsHint": "ordenadas por data de descoberta",
+    "recentJobsHint": "ordenadas por fit",
     "noJobs": "Sem vagas ainda — clique em \"Rodar busca\" no topo."
   },
   "profile": {
+    "title": "Perfil",
     "background": "Background",
     "cvBase": "CV base",
     "saveProfile": "Salvar perfil",
@@ -72,10 +90,25 @@
     },
     "openJob": "abrir vaga ↗",
     "approve": "Aprovar e submeter",
+    "reviewContent": "Revisar conteúdo",
+    "cvLabel": "CV proposto",
+    "coverLabel": "Carta de apresentação",
     "answerPlaceholder": "sua resposta…",
     "answer": "Responder",
     "resolve": "Resolver",
-    "noActions": "Nenhuma pendência. 🎉"
+    "view": "Ver",
+    "noActions": "Nenhuma pendência.",
+    "noActionsHint": "Quando o agente precisa de uma decisão ou trava, aparece aqui.",
+    "error": "Não foi possível carregar as pendências.",
+    "retry": "Tentar de novo",
+    "tiers": {
+      "blocking": "Bloqueando o agente",
+      "blockingHint": "O agente está travado até você resolver isto.",
+      "decision": "Precisam da sua decisão",
+      "decisionHint": "Responda para o agente continuar.",
+      "routine": "Rotina",
+      "routineHint": "Aprovar e enviar."
+    }
   },
   "session": {
     "title": "Sessão do agente",
@@ -88,7 +121,10 @@
     "continueTitle": "Continuar após ação manual",
     "continueHint": "Depois de resolver um bloqueio no Chrome (captcha/login/campo), peça ao agente para retomar.",
     "continuePlaceholder": "Instrução opcional (ou deixe em branco para só continuar)",
-    "continueButton": "Continuar"
+    "continueButton": "Continuar",
+    "waitingTitle": "O agente está aguardando você",
+    "goResolve": "Resolver",
+    "waitingMore": "+{{count}} outra(s) pendência(s)"
   },
   "feedback": {
     "title": "Feedback do agente",
@@ -133,6 +169,8 @@
   "config": {
     "loading": "carregando…",
     "application": "Candidatura",
+    "humanReview": "Revisão humana antes de preencher",
+    "humanReviewHint": "O agente sempre gera o CV/carta e para para sua aprovação antes de preencher ou enviar qualquer formulário no site da vaga — vale até nos modos Autônomo/Híbrido. Seus dados pessoais são preenchidos sem aprovação extra.",
     "modeLabel": "Modo de candidatura",
     "modeHint": "review = só prepara; autonomous = envia; hybrid = por fit",
     "hybridLabel": "Limiar híbrido (fit)",
@@ -190,6 +228,12 @@
     "jobNotFound": "(detalhes da vaga não encontrados)",
     "filterAvailable": "Disponíveis",
     "filterApplied": "Aplicadas",
+    "bands": {
+      "strong": "Fit forte",
+      "medium": "Fit médio",
+      "weak": "Fit baixo",
+      "unscored": "Sem score"
+    },
     "availableEmpty": "Nenhuma vaga disponível ainda.",
     "appliedEmpty": "Nenhuma vaga aplicada ainda.",
     "status": {

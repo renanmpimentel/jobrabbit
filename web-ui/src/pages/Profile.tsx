@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Trash2 } from "lucide-react";
 import { useProfile, useVariants, useInvalidate, post, del } from "../hooks";
-import { Card, CardHeader, Button, Textarea, Input, Toggle, Empty, Badge } from "../ui";
+import { Card, CardHeader, Button, Textarea, Input, Toggle, Empty, Badge, SkeletonRows, ErrorState } from "../ui";
+import { useToast } from "../toast";
 
 export default function Profile() {
   const { t } = useTranslation();
   const profile = useProfile();
   const variants = useVariants();
   const invalidate = useInvalidate();
+  const toast = useToast();
 
   const [bg, setBg] = useState("");
   const [cv, setCv] = useState("");
@@ -24,7 +27,12 @@ export default function Profile() {
   }, [profile.data]);
 
   const saveProfile = () =>
-    post("/profile", { background: bg, cv_base: cv }).then(invalidate).catch((e) => alert(String(e)));
+    post("/profile", { background: bg, cv_base: cv })
+      .then(() => {
+        invalidate();
+        toast.success(t("common.saved"));
+      })
+      .catch((e) => toast.error(String(e)));
 
   const addVariant = () => {
     if (!label.trim() || !query.trim()) return;
@@ -33,48 +41,82 @@ export default function Profile() {
         setLabel("");
         setQuery("");
         invalidate();
+        toast.success(t("common.saved"));
       })
-      .catch((e) => alert(String(e)));
+      .catch((e) => toast.error(String(e)));
   };
 
-  const doImport = (body: object) => post("/import", body).then(invalidate).catch((e) => alert(String(e)));
+  const removeVariant = (id: number) =>
+    del(`/variants/${id}`)
+      .then(() => {
+        invalidate();
+        toast.success(t("common.removed"));
+      })
+      .catch((e) => toast.error(String(e)));
+
+  const toggleVariant = (id: number) =>
+    post(`/variants/${id}/toggle`)
+      .then(invalidate)
+      .catch((e) => toast.error(String(e)));
+
+  const doImport = (body: object) =>
+    post("/import", body)
+      .then(() => {
+        invalidate();
+        toast.success(t("common.started"));
+      })
+      .catch((e) => toast.error(String(e)));
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader title={t("profile.background")} />
-          <div className="p-4">
+      {/* Profile fields — Save grouped in the header, next to the fields */}
+      <Card>
+        <CardHeader
+          title={t("profile.title")}
+          right={
+            <Button variant="primary" onClick={saveProfile}>
+              {t("profile.saveProfile")}
+            </Button>
+          }
+        />
+        <div className="grid gap-5 p-6 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-fg">{t("profile.background")}</label>
             <Textarea rows={8} value={bg} onChange={(e) => setBg(e.target.value)} />
           </div>
-        </Card>
-        <Card>
-          <CardHeader title={t("profile.cvBase")} />
-          <div className="p-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-fg">{t("profile.cvBase")}</label>
             <Textarea rows={8} value={cv} onChange={(e) => setCv(e.target.value)} />
           </div>
-        </Card>
-      </div>
-      <Button variant="primary" onClick={saveProfile}>
-        {t("profile.saveProfile")}
-      </Button>
+        </div>
+      </Card>
 
       <Card>
         <CardHeader title={t("profile.searchVariants")} hint={t("profile.searchVariantsHint")} />
-        {!variants.data?.length ? (
+        {variants.isLoading ? (
+          <SkeletonRows rows={3} />
+        ) : variants.isError ? (
+          <ErrorState message={t("common.error")} retryLabel={t("common.retry")} onRetry={() => variants.refetch()} />
+        ) : !variants.data?.length ? (
           <Empty>{t("profile.noVariants")}</Empty>
         ) : (
           <ul className="divide-y divide-border">
             {variants.data.map((v) => (
-              <li key={v.id} className="flex items-center gap-3 px-4 py-2.5">
-                <Toggle on={v.enabled} onClick={() => post(`/variants/${v.id}/toggle`).then(invalidate)} />
-                <div className="flex-1">
-                  <div className="text-sm text-fg">{v.label}</div>
-                  <div className="text-xs text-fg-muted">{v.query}</div>
+              <li key={v.id} className="flex items-center gap-3 px-4 py-3">
+                <Toggle on={v.enabled} onClick={() => toggleVariant(v.id)} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-fg">{v.label}</div>
+                  <div className="truncate text-sm text-fg-muted">{v.query}</div>
                 </div>
                 {!v.enabled && <Badge>{t("profile.disabled")}</Badge>}
-                <Button variant="danger" onClick={() => del(`/variants/${v.id}`).then(invalidate)}>
-                  {t("profile.remove")}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-fg-subtle hover:bg-danger-tint hover:text-danger"
+                  aria-label={t("profile.remove")}
+                  onClick={() => removeVariant(v.id)}
+                >
+                  <Trash2 size={15} />
                 </Button>
               </li>
             ))}
