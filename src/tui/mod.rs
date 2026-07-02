@@ -1349,6 +1349,7 @@ mod tests {
                 score: 82,
                 target: "general".into(),
                 report: "## Score\n82".into(),
+                keywords: vec![],
             },
             &db,
         );

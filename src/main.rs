@@ -141,6 +141,18 @@ fn snapshot_mode() -> Result<()> {
         82,
         "Engineering Manager (Payments)",
         "## Score: 82/100\n## Strengths\n- Quantified achievements\n## Issues\n- Missing skills section\n## Suggestions\n- Add keywords: Kafka, SRE",
+        &[
+            crate::db::models::Keyword {
+                keyword: "Kafka".into(),
+                importance: "required".into(),
+                present: false,
+            },
+            crate::db::models::Keyword {
+                keyword: "SRE".into(),
+                importance: "preferred".into(),
+                present: false,
+            },
+        ],
     )?;
 
     let mut app = tui::App::new(&db)?;

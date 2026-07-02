@@ -737,6 +737,9 @@ async fn answer_pending(
 struct CvReviewBody {
     /// Target job text (or empty/absent for general evaluation).
     target: Option<String>,
+    /// Missing keywords to weave into an improved CV (cv-improve only).
+    #[serde(default)]
+    emphasize_keywords: Vec<String>,
 }
 async fn post_cv_review(
     State(s): State<AppState>,
@@ -757,12 +760,14 @@ async fn post_cv_improve(
     State(s): State<AppState>,
     body: Option<Json<CvReviewBody>>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let target = body.and_then(|b| b.0.target);
+    let body = body.map(|b| b.0);
+    let target = body.as_ref().and_then(|b| b.target.clone());
+    let emphasize = body.map(|b| b.emphasize_keywords).unwrap_or_default();
     let prompt = {
         let db = s.db.lock().unwrap();
         let settings = s.settings.lock().unwrap().clone();
         let alvo = target.as_deref().filter(|t| !t.trim().is_empty());
-        actions::improve_cv_prompt(&db, &settings, alvo)
+        actions::improve_cv_prompt(&db, &settings, alvo, &emphasize)
             .map_err(|e| (StatusCode::BAD_REQUEST, e))?
     };
     spawn_one(&s, prompt, "improved resume version generated")

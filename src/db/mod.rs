@@ -41,6 +41,10 @@ impl Db {
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN screenshot_path TEXT", []);
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN stage TEXT DEFAULT 'applied'", []);
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN notes TEXT", []);
+        let _ = conn.execute(
+            "ALTER TABLE cv_reviews ADD COLUMN keywords TEXT NOT NULL DEFAULT ''",
+            [],
+        );
         let db = Self { conn };
         db.migrate_answer_keys()?;
         db.seed_answers()?;
@@ -578,17 +582,24 @@ impl Db {
 
     // ---- CV reviews (ATS tab) --------------------------------------------
 
-    pub fn add_cv_review(&self, score: i64, target: &str, report: &str) -> Result<i64> {
+    pub fn add_cv_review(
+        &self,
+        score: i64,
+        target: &str,
+        report: &str,
+        keywords: &[Keyword],
+    ) -> Result<i64> {
+        let keywords_json = serde_json::to_string(keywords).unwrap_or_else(|_| "[]".into());
         self.conn.execute(
-            "INSERT INTO cv_reviews (score, target, report, created_at) VALUES (?1, ?2, ?3, ?4)",
-            params![score, target, report, now_rfc3339()],
+            "INSERT INTO cv_reviews (score, target, report, keywords, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![score, target, report, keywords_json, now_rfc3339()],
         )?;
         Ok(self.conn.last_insert_rowid())
     }
 
     pub fn latest_cv_review(&self) -> Result<Option<CvReview>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, score, target, report, created_at FROM cv_reviews ORDER BY id DESC LIMIT 1",
+            "SELECT id, score, target, report, keywords, created_at FROM cv_reviews ORDER BY id DESC LIMIT 1",
         )?;
         Ok(stmt.query_row([], CvReview::from_row).ok())
     }
@@ -873,11 +884,20 @@ mod tests {
     fn cv_review_add_latest() {
         let db = Db::open_in_memory().unwrap();
         assert!(db.latest_cv_review().unwrap().is_none());
-        db.add_cv_review(70, "general", "rep1").unwrap();
-        db.add_cv_review(85, "Eng Manager", "rep2").unwrap();
+        db.add_cv_review(70, "general", "rep1", &[]).unwrap();
+        db.add_cv_review(
+            85,
+            "Eng Manager",
+            "rep2",
+            &[Keyword { keyword: "Go".into(), importance: "required".into(), present: false }],
+        )
+        .unwrap();
         let latest = db.latest_cv_review().unwrap().unwrap();
         assert_eq!(latest.score, 85);
         assert_eq!(latest.target, "Eng Manager");
+        assert_eq!(latest.keywords.len(), 1);
+        assert_eq!(latest.keywords[0].keyword, "Go");
+        assert!(!latest.keywords[0].present);
     }
 
     #[test]
@@ -964,7 +984,7 @@ mod tests {
         db.save_profile("bg", "cv").unwrap();
         db.add_variant("Senior Remote", "senior rust remote").unwrap();
         db.set_answer("english_level", "English level", "advanced").unwrap();
-        db.add_cv_review(82, "EM", "report").unwrap();
+        db.add_cv_review(82, "EM", "report", &[]).unwrap();
 
         // Applied job with screenshot — MUST be preserved.
         let applied_job = db

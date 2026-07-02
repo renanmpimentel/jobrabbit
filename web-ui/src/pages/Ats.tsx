@@ -1,11 +1,26 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
-import { Download, Copy, Check } from "lucide-react";
-import { useCvReview, useCvVersion, useJobs, useInvalidate, post } from "../hooks";
+import { Download, Copy, Check, Plus } from "lucide-react";
+import { useCvReview, useCvVersion, useJobs, useInvalidate, post, type Keyword } from "../hooks";
 import { Card, CardHeader, Button, Textarea, Empty, Select } from "../ui";
 import { cn } from "../ui";
 import { useToast } from "../toast";
+
+// A single keyword chip: green when already in the CV, amber when missing.
+function KeywordChip({ kw }: { kw: Keyword }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium",
+        kw.present ? "bg-success-tint text-success" : "bg-warn-tint text-warn",
+      )}
+    >
+      {kw.present ? <Check size={11} /> : <Plus size={11} />}
+      {kw.keyword}
+    </span>
+  );
+}
 
 function scoreColor(s: number): string {
   if (s >= 75) return "text-success";
@@ -86,6 +101,22 @@ export default function Ats() {
     }
   }
 
+  // Regenerates the improved CV, weaving in the missing keywords (truthfully).
+  async function applyKeywords() {
+    const missing = (review.data?.keywords ?? []).filter((k) => !k.present).map((k) => k.keyword);
+    if (missing.length === 0) return;
+    setBusy(true);
+    try {
+      await post("/cv-improve/run", { target: currentTarget(), emphasize_keywords: missing });
+      invalidate();
+      toast.success(t("common.started"));
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function copy() {
     if (!version.data) return;
     await navigator.clipboard.writeText(version.data.content);
@@ -116,6 +147,39 @@ export default function Ats() {
             )}
           </div>
         </Card>
+
+        {r && r.keywords.length > 0 && (
+          <Card>
+            <CardHeader
+              title={t("ats.keywordsTitle")}
+              hint={t("ats.keywordsHint")}
+              right={
+                r.keywords.some((k) => !k.present) ? (
+                  <Button variant="primary" size="sm" disabled={busy} onClick={applyKeywords}>
+                    {t("ats.applyKeywords", { count: r.keywords.filter((k) => !k.present).length })}
+                  </Button>
+                ) : undefined
+              }
+            />
+            <div className="space-y-3 p-5">
+              {(["required", "preferred"] as const).map((imp) => {
+                const items = r.keywords.filter((k) => k.importance === imp);
+                if (!items.length) return null;
+                return (
+                  <div key={imp}>
+                    <div className="mb-1.5 text-xs font-medium text-fg-muted">{t(`ats.importance.${imp}`)}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.map((k, i) => (
+                        <KeywordChip key={`${k.keyword}-${i}`} kw={k} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-fg-subtle">{t("ats.keywordsLegend")}</p>
+            </div>
+          </Card>
+        )}
 
         <Card>
           <CardHeader

@@ -55,7 +55,9 @@ fn cv_ats_guidance(locale: Locale) -> &'static str {
              - Cover the role's must-have keywords the candidate genuinely has; if a required skill is missing\n\
                from the profile, do NOT fake it — emphasize the closest real, transferable experience.\n\
              - Before finalizing, SELF-CHECK the CV against the job as an ATS would: estimate keyword/requirement\n\
-               coverage and iterate once to raise it. Aim for high, honest alignment.\n\n"
+               coverage and iterate once to raise it. Aim for high, honest alignment.\n\
+             - Balance BOTH audiences: keywords must read naturally for a human recruiter (NO stuffing, no bare\n\
+               keyword dumps) while still surfacing the exact terms an ATS scans for.\n\n"
             ,
         Locale::PtBr => "## Currículo otimizado para ATS/IA (seja assertivo — a maioria dos sites filtra com ATS + IA)\n\
              Gere o CV ESPECIFICAMENTE para ESTA vaga para maximizar o match:\n\
@@ -69,7 +71,9 @@ fn cv_ats_guidance(locale: Locale) -> &'static str {
              - Cubra as palavras-chave obrigatórias que o candidato realmente tem; se faltar uma skill exigida,\n\
                NÃO finja — destaque a experiência real transferível mais próxima.\n\
              - Antes de finalizar, AUTO-AVALIE o CV contra a vaga como um ATS faria: estime a cobertura de\n\
-               requisitos/palavras-chave e itere uma vez para aumentá-la. Busque alta aderência honesta.\n\n"
+               requisitos/palavras-chave e itere uma vez para aumentá-la. Busque alta aderência honesta.\n\
+             - Equilibre OS DOIS públicos: as palavras-chave devem soar naturais para um recrutador humano\n\
+               (SEM stuffing, sem listas soltas) e ao mesmo tempo expor os termos exatos que o ATS varre.\n\n"
             ,
     }
 }
@@ -753,9 +757,14 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                  ## Résumé\n{cv_text}\n\n\
                  ## Output (REQUIRED) — a SINGLE JSON line (NDJSON), no text outside it, no fences:\n\
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<target summary or 'general'>\",\
-                 \"report\":\"markdown: ## Score, ## Strengths, ## Issues, ## Suggestions (bullets)\"}}\n\
+                 \"report\":\"markdown: ## Score, ## Strengths, ## Issues, ## Suggestions (bullets)\",\
+                 \"keywords\":[{{\"keyword\":\"Kubernetes\",\"importance\":\"required\",\"present\":false}}]}}\n\
                  The `report` must use \\n for line breaks. Be specific and actionable. When explaining the score, \n\
                  reference the rubric above.\n\
+                 When a target job is given, ALSO fill `keywords`: extract the 8-15 most decisive skills/tools/terms \n\
+                 from the JOB DESCRIPTION (importance \"required\" for must-haves, \"preferred\" for nice-to-haves) and \n\
+                 set `present` to whether the résumé already contains that keyword — TRUTHFULLY, never mark a missing \n\
+                 keyword as present. With NO target job, use an empty `keywords` array.\n\
                  Write the ENTIRE `report` in English, regardless of the language of the résumé or target job.",
             )
         }
@@ -791,9 +800,14 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
                  ## Currículo\n{cv_text}\n\n\
                  ## Saída (OBRIGATÓRIO) — UMA única linha JSON (NDJSON), sem texto fora dela, sem cercas:\n\
                  {{\"type\":\"cv_review\",\"score\":<0-100>,\"target\":\"<resumo do alvo ou 'geral'>\",\
-                 \"report\":\"markdown: ## Nota, ## Pontos fortes, ## Problemas, ## Sugestões (bullets)\"}}\n\
+                 \"report\":\"markdown: ## Nota, ## Pontos fortes, ## Problemas, ## Sugestões (bullets)\",\
+                 \"keywords\":[{{\"keyword\":\"Kubernetes\",\"importance\":\"required\",\"present\":false}}]}}\n\
                  O `report` deve usar \\n para quebras de linha. Seja específico e acionável. Ao explicar a nota, \n\
                  referencie a rubrica acima.\n\
+                 Quando houver vaga-alvo, preencha TAMBÉM `keywords`: extraia as 8-15 skills/ferramentas/termos mais \n\
+                 decisivos da DESCRIÇÃO DA VAGA (importance \"required\" para obrigatórios, \"preferred\" para desejáveis) \n\
+                 e defina `present` conforme o currículo já contenha ou não a keyword — COM VERDADE, nunca marque como \n\
+                 presente uma keyword ausente. SEM vaga-alvo, use um array `keywords` vazio.\n\
                  Escreva TODO o `report` em português (pt-BR), independentemente do idioma do currículo ou da vaga-alvo.",
             )
         }
@@ -803,7 +817,12 @@ pub fn review_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String 
 /// Prompt to GENERATE an improved version of the résumé (ATS-optimized).
 /// No browsing — just rewrites based on the CV (and the target job, if any).
 /// Instructs self-iteration internally to reach ≥90 score, max 3 passes.
-pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String {
+pub fn improve_cv(
+    cv_text: &str,
+    target: Option<&str>,
+    emphasize: &[String],
+    locale: Locale,
+) -> String {
     match locale {
         Locale::En => {
             let target_block = match target {
@@ -812,6 +831,17 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                 ),
                 _ => "## No target job — optimize for overall ATS quality (keep it comprehensive).\n"
                     .to_string(),
+            };
+            let emphasis_block = if emphasize.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "## Emphasize these missing keywords\n\
+                     Weave these keywords into the CV where the candidate GENUINELY qualifies (never invent \n\
+                     experience): {list}. Use them in natural sentences/bullets — do NOT keyword-stuff or add a \n\
+                     bare keyword list. Keep the exact terminology and preserve human readability.\n\n",
+                    list = emphasize.join(", ")
+                )
             };
             format!(
                 "You are a résumé and ATS expert. Do NOT browse the web and do NOT invent\n\
@@ -837,6 +867,7 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  - Incorporate relevant keywords (from the target job, if any).\n\
                  - English, concise, ready to send.\n\n\
                  {target_block}\n\
+                 {emphasis_block}\
                  ## Original résumé\n{cv_text}\n\n\
                  ## Output (REQUIRED) — TWO JSON lines (NDJSON), no text outside them, no fences:\n\
                  First, emit the improved CV:\n\
@@ -857,6 +888,17 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                 ),
                 _ => "## Sem vaga-alvo — otimize para qualidade ATS geral (mantenha abrangente).\n"
                     .to_string(),
+            };
+            let bloco_enfase = if emphasize.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "## Enfatize estas keywords ausentes\n\
+                     Incorpore estas keywords no CV onde o candidato REALMENTE se qualifica (nunca invente \n\
+                     experiência): {list}. Use-as em frases/bullets naturais — NÃO faça keyword-stuffing nem \n\
+                     adicione uma lista solta de keywords. Mantenha a terminologia exata e preserve a legibilidade.\n\n",
+                    list = emphasize.join(", ")
+                )
             };
             format!(
                 "Você é um especialista em currículos e ATS. NÃO navegue na web e NÃO invente\n\
@@ -882,6 +924,7 @@ pub fn improve_cv(cv_text: &str, target: Option<&str>, locale: Locale) -> String
                  - Incorpore palavras-chave relevantes (da vaga-alvo, se houver).\n\
                  - Português, conciso, pronto para enviar.\n\n\
                  {bloco_alvo}\n\
+                 {bloco_enfase}\
                  ## Currículo original\n{cv_text}\n\n\
                  ## Saída (OBRIGATÓRIO) — DUAS linhas JSON (NDJSON), sem texto fora delas, sem cercas:\n\
                  Primeiro, emita o CV melhorado:\n\
@@ -1362,14 +1405,14 @@ mod tests {
 
     #[test]
     fn improve_cv_iterates_to_90() {
-        let en_prompt = improve_cv("my cv", Some("Senior Backend"), Locale::En);
+        let en_prompt = improve_cv("my cv", Some("Senior Backend"), &[], Locale::En);
         assert!(en_prompt.contains("cv_improved"), "must emit cv_improved");
         assert!(en_prompt.contains("cv_review"), "must emit cv_review after iteration");
         assert!(en_prompt.contains("90"), "must target 90 score in iteration");
         assert!(en_prompt.contains("iterate") || en_prompt.contains("pass"),
                 "must mention iteration/passes for self-evaluation");
 
-        let pt_prompt = improve_cv("meu cv", Some("Gerente Sênior"), Locale::PtBr);
+        let pt_prompt = improve_cv("meu cv", Some("Gerente Sênior"), &[], Locale::PtBr);
         assert!(pt_prompt.contains("cv_improved"));
         assert!(pt_prompt.contains("cv_review"));
         assert!(pt_prompt.contains("90"), "PT improve_cv must target 90 score");
@@ -1380,8 +1423,8 @@ mod tests {
         // ATS review + improve + feedback follow the CONFIG locale.
         assert!(review_cv("cv", None, Locale::PtBr).contains("português"));
         assert!(review_cv("cv", None, Locale::En).contains("in English"));
-        assert!(improve_cv("cv", None, Locale::PtBr).contains("português"));
-        assert!(improve_cv("cv", None, Locale::En).contains("in English"));
+        assert!(improve_cv("cv", None, &[], Locale::PtBr).contains("português"));
+        assert!(improve_cv("cv", None, &[], Locale::En).contains("in English"));
         assert!(analyze_feedback(&sample_profile(), "x", Locale::PtBr).contains("português"));
         assert!(analyze_feedback(&sample_profile(), "x", Locale::En).contains("in English"));
 

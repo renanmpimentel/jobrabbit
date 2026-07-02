@@ -191,12 +191,13 @@ pub fn improve_cv_prompt(
     db: &Db,
     settings: &Settings,
     target: Option<&str>,
+    emphasize: &[String],
 ) -> Result<String, String> {
     let cv = cv_source_text(db, settings);
     if cv.trim().is_empty() {
         return Err("no resume — import a CV or fill in the profile".into());
     }
-    Ok(prompts::improve_cv(&cv, target, settings.locale))
+    Ok(prompts::improve_cv(&cv, target, emphasize, settings.locale))
 }
 
 /// Prompt for periodic feedback analysis (recent results).

@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS cv_reviews (
     score      INTEGER NOT NULL,
     target     TEXT NOT NULL DEFAULT '',
     report     TEXT NOT NULL DEFAULT '',
+    keywords   TEXT NOT NULL DEFAULT '',   -- JSON: [{keyword,importance,present}]
     created_at TEXT NOT NULL
 );
 

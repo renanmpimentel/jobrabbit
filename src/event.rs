@@ -60,6 +60,7 @@ pub enum AppEvent {
         score: u8,
         target: String,
         report: String,
+        keywords: Vec<crate::db::models::Keyword>,
     },
     /// The agent generated an improved version of the resume (ATS tab).
     AgentCvImproved { content: String, target: String },
@@ -125,10 +126,12 @@ impl AppEvent {
                 score,
                 target,
                 report,
+                keywords,
             } => AppEvent::AgentCvReview {
                 score,
                 target,
                 report,
+                keywords,
             },
             AgentOutput::CvImproved { content, target } => {
                 AppEvent::AgentCvImproved { content, target }

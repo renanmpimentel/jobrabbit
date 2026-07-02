@@ -9,7 +9,7 @@
 //!
 //! Lines that don't match the protocol are treated as normal human text.
 
-use crate::db::models::NewJob;
+use crate::db::models::{Keyword, NewJob};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AgentOutput {
@@ -41,6 +41,7 @@ pub enum AgentOutput {
         score: u8,
         target: String,
         report: String,
+        keywords: Vec<Keyword>,
     },
     /// Improved (rewritten/optimized for ATS) version of the resume.
     CvImproved {
@@ -155,10 +156,35 @@ pub fn parse(line: &str) -> Option<AgentOutput> {
                 .and_then(|x| x.as_i64())
                 .unwrap_or(0)
                 .clamp(0, 100) as u8;
+            let keywords = v
+                .get("keywords")
+                .and_then(|x| x.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|it| {
+                            let keyword = str_field(it, "keyword");
+                            if keyword.is_empty() {
+                                return None;
+                            }
+                            let importance = str_field(it, "importance");
+                            Some(Keyword {
+                                keyword,
+                                importance: if importance == "required" {
+                                    importance
+                                } else {
+                                    "preferred".to_string()
+                                },
+                                present: it.get("present").and_then(|x| x.as_bool()).unwrap_or(false),
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             Some(AgentOutput::CvReview {
                 score,
                 target: str_field(&v, "target"),
                 report,
+                keywords,
             })
         }
         "cv_improved" => {
@@ -343,16 +369,22 @@ mod tests {
 
     #[test]
     fn parses_cv_review() {
-        let l = r#"{"type":"cv_review","score":82,"target":"Eng Manager","report":"Strengths - accomplishments"}"#;
+        let l = r#"{"type":"cv_review","score":82,"target":"Eng Manager","report":"Strengths - accomplishments","keywords":[{"keyword":"Go","importance":"required","present":false},{"keyword":"","importance":"x","present":true}]}"#;
         match parse(l).unwrap() {
             AgentOutput::CvReview {
                 score,
                 target,
                 report,
+                keywords,
             } => {
                 assert_eq!(score, 82);
                 assert_eq!(target, "Eng Manager");
                 assert!(report.contains("accomplishments"));
+                // the empty-keyword entry is discarded; importance normalized.
+                assert_eq!(keywords.len(), 1);
+                assert_eq!(keywords[0].keyword, "Go");
+                assert_eq!(keywords[0].importance, "required");
+                assert!(!keywords[0].present);
             }
             other => panic!("expected CvReview, got {other:?}"),
         }

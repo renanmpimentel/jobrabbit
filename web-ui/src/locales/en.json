@@ -153,7 +153,15 @@
     "pasteJobPlaceholder": "paste the job description…",
     "evaluate": "Evaluate (score + report)",
     "generateImproved": "✨ Generate Improved Version",
-    "generating": "Generating…"
+    "generating": "Generating…",
+    "keywordsTitle": "ATS keywords",
+    "keywordsHint": "Extracted from the target job vs. your CV.",
+    "keywordsLegend": "Green = already in your CV · amber = missing.",
+    "applyKeywords": "Apply {{count}} missing",
+    "importance": {
+      "required": "Required",
+      "preferred": "Preferred"
+    }
   },
   "doctor": {
     "title": "Environment Health",

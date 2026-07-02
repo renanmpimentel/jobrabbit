@@ -174,8 +174,9 @@ pub fn apply_event(db: &Db, ev: &AppEvent, session_id: &mut Option<i64>) -> Even
             score,
             target,
             report,
+            keywords,
         } => {
-            let _ = db.add_cv_review(*score as i64, target, report);
+            let _ = db.add_cv_review(*score as i64, target, report, keywords);
             out.log(format!(
                 "📋 CV evaluation: score {score}/100 (target: {target})"
             ));

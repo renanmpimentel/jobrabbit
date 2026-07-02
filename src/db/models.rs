@@ -224,6 +224,16 @@ impl Answer {
     }
 }
 
+/// A keyword extracted from a target job, with its importance and whether the
+/// résumé already contains it. Drives the ATS keyword-gap chips.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Keyword {
+    pub keyword: String,
+    /// "required" | "preferred".
+    pub importance: String,
+    pub present: bool,
+}
+
 /// ATS evaluation of the resume.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CvReview {
@@ -231,16 +241,21 @@ pub struct CvReview {
     pub score: i64,
     pub target: String,
     pub report: String,
+    /// Keyword-gap analysis against the target job (empty for general reviews).
+    #[serde(default)]
+    pub keywords: Vec<Keyword>,
     pub created_at: String,
 }
 
 impl CvReview {
     pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        let keywords_json: String = row.get("keywords").unwrap_or_default();
         Ok(Self {
             id: row.get("id")?,
             score: row.get("score")?,
             target: row.get("target")?,
             report: row.get("report")?,
+            keywords: serde_json::from_str(&keywords_json).unwrap_or_default(),
             created_at: row.get("created_at")?,
         })
     }

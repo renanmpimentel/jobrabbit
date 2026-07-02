@@ -78,11 +78,18 @@ export interface Answer {
   updated_at: string;
 }
 
+export interface Keyword {
+  keyword: string;
+  importance: "required" | "preferred";
+  present: boolean;
+}
+
 export interface CvReview {
   id: number;
   score: number;
   target: string;
   report: string;
+  keywords: Keyword[];
   created_at: string;
 }
 

@@ -153,7 +153,15 @@
     "pasteJobPlaceholder": "cole a descrição da vaga…",
     "evaluate": "Avaliar (nota + relatório)",
     "generateImproved": "✨ Gerar versão melhorada",
-    "generating": "Gerando…"
+    "generating": "Gerando…",
+    "keywordsTitle": "Keywords para ATS",
+    "keywordsHint": "Extraídas da vaga-alvo vs. seu CV.",
+    "keywordsLegend": "Verde = já no seu CV · âmbar = faltando.",
+    "applyKeywords": "Aplicar {{count}} ausentes",
+    "importance": {
+      "required": "Obrigatórias",
+      "preferred": "Desejáveis"
+    }
   },
   "doctor": {
     "title": "Saúde do ambiente",
