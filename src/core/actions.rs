@@ -35,6 +35,8 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
     if variants.is_empty() {
         return Err("no active variant — add/enable in Profile".into());
     }
+    // Selected job sources are global (same for every variant).
+    let sources = db.list_sources().unwrap_or_default();
     let mode = settings.apply_mode.clone();
     Ok(variants
         .iter()
@@ -49,6 +51,7 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
                 settings.locale,
                 settings.language_filter,
                 &settings.work_model,
+                &sources,
             )
         })
         .collect())

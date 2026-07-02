@@ -5,7 +5,7 @@
 //! evaluate fit against the profile and generate a CV/cover letter. They are plain
 //! text: the real integration passes them via `claude -p "<prompt>"`.
 
-use crate::db::models::{Profile, SearchVariant};
+use crate::db::models::{JobSource, Profile, SearchVariant};
 use crate::locale::Locale;
 
 /// Block with the candidate profile, reused across all prompts.
@@ -89,7 +89,14 @@ pub fn search_and_evaluate(
     locale: Locale,
     language_filter: bool,
     work_model: &str,
+    sources: &[JobSource],
 ) -> String {
+    // Enabled sources shared by all variants, as "Name (domain)" for the prompt.
+    let source_list: Vec<String> = sources
+        .iter()
+        .filter(|s| s.enabled)
+        .map(|s| format!("{} ({})", s.name, s.domain))
+        .collect();
     match locale {
         Locale::En => {
             // Application instruction according to the mode chosen by the user.
@@ -149,6 +156,18 @@ pub fn search_and_evaluate(
                 label = work_model_label
             );
 
+            // Job sources: restrict the search to the sites the user selected.
+            let sources_section = if source_list.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "## Job sources (search ONLY these sites)\n\
+                     Search for jobs ONLY on: {list}.\n\
+                     Do NOT apply to jobs from other sites. If one of these sites is unavailable or unreachable, skip it and continue with the others.\n\n",
+                    list = source_list.join(", ")
+                )
+            };
+
             format!(
                 "You are the jobRabbit agent, helping this candidate apply to jobs.\n\n\
                  IMPORTANT: use the **Claude in Chrome** integration (the user's REAL Chrome, already logged in).\n\
@@ -163,6 +182,7 @@ pub fn search_and_evaluate(
                  {policy}\n\n\
                  {language}\
                  {work_model}\
+                 {sources}\
                  {cv_guidance}\
                  ## CV/cover letter language\n\
                  When you generate a CV or cover letter for a job, write it in the LANGUAGE OF THE JOB\n\
@@ -183,6 +203,7 @@ pub fn search_and_evaluate(
                 policy = policy,
                 language = language,
                 work_model = work_model_section,
+                sources = sources_section,
                 cv_guidance = cv_ats_guidance(locale),
             )
         }
@@ -244,6 +265,18 @@ pub fn search_and_evaluate(
                 label = modelo_trabalho_label
             );
 
+            // Fontes de vaga: restringe a busca aos sites que o usuário selecionou.
+            let fontes = if source_list.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "## Fontes de vaga (busque APENAS nestes sites)\n\
+                     Busque vagas SOMENTE em: {list}.\n\
+                     NÃO se candidate a vagas de outros sites. Se um destes sites estiver indisponível ou inacessível, pule-o e continue com os demais.\n\n",
+                    list = source_list.join(", ")
+                )
+            };
+
             format!(
                 "Você é o agente do jobRabbit, que ajuda este candidato a se candidatar a vagas.\n\n\
                  IMPORTANTE: use a integração **Claude in Chrome** (o Chrome REAL do usuário, já logado).\n\
@@ -258,6 +291,7 @@ pub fn search_and_evaluate(
                  {politica}\n\n\
                  {idioma}\
                  {modelo_trabalho}\
+                 {fontes}\
                  {cv_guidance}\
                  ## Idioma do CV/carta\n\
                  Ao gerar um CV ou carta de apresentação para uma vaga, escreva-o no IDIOMA DA\n\
@@ -277,6 +311,7 @@ pub fn search_and_evaluate(
                 query = variant.query,
                 idioma = idioma,
                 modelo_trabalho = modelo_trabalho,
+                fontes = fontes,
                 cv_guidance = cv_ats_guidance(locale),
             )
         }
@@ -1021,7 +1056,7 @@ pub fn continue_session(user_msg: &str, locale: Locale) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::models::{Profile, SearchVariant};
+    use crate::db::models::{JobSource, Profile, SearchVariant};
 
     fn sample_profile() -> Profile {
         Profile {
@@ -1050,6 +1085,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(p.contains("Rust/Go"));
         assert!(p.contains("Senior Remote"));
@@ -1057,6 +1093,41 @@ mod tests {
         assert!(p.contains("NDJSON"));
         assert!(p.contains("fit_score"));
         assert!(p.contains("Work model") || p.contains("REMOTE"));
+    }
+
+    #[test]
+    fn search_restricts_to_enabled_sources() {
+        let v = SearchVariant {
+            id: 1,
+            label: "L".into(),
+            query: "q".into(),
+            enabled: true,
+            created_at: "x".into(),
+        };
+        let src = |name: &str, domain: &str, enabled: bool| JobSource {
+            id: 1,
+            name: name.into(),
+            domain: domain.into(),
+            enabled,
+            builtin: true,
+            created_at: "x".into(),
+        };
+        let sources = [
+            src("LinkedIn", "linkedin.com", true),
+            src("Indeed", "indeed.com", false),
+        ];
+        let p = search_and_evaluate(
+            &sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &sources,
+        );
+        assert!(p.contains("Job sources"));
+        assert!(p.contains("LinkedIn (linkedin.com)"));
+        assert!(!p.contains("indeed.com"), "disabled source must not appear");
+
+        // No sources → no restriction block.
+        let none = search_and_evaluate(
+            &sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &[],
+        );
+        assert!(!none.contains("Job sources"));
     }
 
     #[test]
@@ -1078,6 +1149,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(!without.contains("Language: English only"));
 
@@ -1091,6 +1163,7 @@ mod tests {
             Locale::En,
             true,
             "remote",
+            &[],
         );
         assert!(with.contains("Language: English only"));
         assert!(with.contains("skipped"));
@@ -1106,6 +1179,7 @@ mod tests {
             Locale::PtBr,
             true,
             "remote",
+            &[],
         );
         assert!(pt.contains("APENAS pt-BR"));
     }
@@ -1130,6 +1204,7 @@ mod tests {
             Locale::En,
             false,
             "onsite",
+            &[],
         );
         assert!(onsite_en.contains("ON-SITE"));
 
@@ -1144,6 +1219,7 @@ mod tests {
             Locale::PtBr,
             false,
             "hybrid",
+            &[],
         );
         assert!(hybrid_pt.contains("HÍBRIDAS"));
     }
@@ -1167,6 +1243,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(review.contains("REVIEW"));
         assert!(review.contains("Do NOT submit"));
@@ -1181,6 +1258,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(auto.contains("AUTONOMOUS"));
         assert!(auto.contains("SUBMIT"));
@@ -1195,6 +1273,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(dry.contains("SIMULATION") || dry.contains("dry-run"));
         assert!(dry.contains("dry_run"));
@@ -1250,6 +1329,7 @@ mod tests {
             Locale::En,
             false,
             "remote",
+            &[],
         );
         assert!(gated.contains("HUMAN REVIEW"), "gate must force human-review policy");
         assert!(!gated.contains("## Policy: AUTONOMOUS"), "autonomous policy must be suppressed");
@@ -1313,9 +1393,9 @@ mod tests {
             enabled: true,
             created_at: "x".into(),
         };
-        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::PtBr, false, "remote");
+        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::PtBr, false, "remote", &[]);
         assert!(pt.contains("IDIOMA DA"), "search flow must generate CV/cover in the job's language");
-        let en = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote");
+        let en = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &[]);
         assert!(en.contains("LANGUAGE OF THE JOB"));
     }
 

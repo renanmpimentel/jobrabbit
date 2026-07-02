@@ -9,6 +9,7 @@ import type {
   DoctorCheck,
   Feedback,
   Job,
+  JobSource,
   PendingAction,
   Profile,
   SearchVariant,
@@ -33,6 +34,7 @@ export const usePending = () => q<PendingAction[]>("pending", "/pending");
 export const useApplications = () => q<Application[]>("applications", "/applications");
 export const useFeedback = () => q<Feedback[]>("feedback", "/feedback");
 export const useVariants = () => q<SearchVariant[]>("variants", "/variants");
+export const useSources = () => q<JobSource[]>("sources", "/sources");
 export const useProfile = () => q<Profile>("profile", "/profile");
 export const useSettings = () => q<Settings>("settings", "/settings");
 export const useAnswers = () => q<Answer[]>("answers", "/answers");

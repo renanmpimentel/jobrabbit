@@ -59,6 +59,25 @@ impl Ats {
     }
 }
 
+/// Built-in job sources `(name, primary domain)` used to seed the selectable
+/// source list. Kept in sync with [`detect`]; the domain is the site's main host.
+pub fn builtin_sources() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("Gupy", "gupy.io"),
+        ("LinkedIn", "linkedin.com"),
+        ("Greenhouse", "greenhouse.io"),
+        ("Lever", "jobs.lever.co"),
+        ("Workday", "myworkdayjobs.com"),
+        ("Ashby", "ashbyhq.com"),
+        ("SmartRecruiters", "smartrecruiters.com"),
+        ("Indeed", "indeed.com"),
+        ("Solides Vagas", "vagas.solides.com.br"),
+        ("Vagas.com.br", "vagas.com.br"),
+        ("InfoJobs", "infojobs.com.br"),
+        ("inHire", "inhire.com.br"),
+    ]
+}
+
 /// Detects the platform from the URL (case-insensitive, by domain/path).
 pub fn detect(url: &str) -> Ats {
     let u = url.to_ascii_lowercase();

@@ -56,6 +56,15 @@ export interface SearchVariant {
   created_at: string;
 }
 
+export interface JobSource {
+  id: number;
+  name: string;
+  domain: string;
+  enabled: boolean;
+  builtin: boolean;
+  created_at: string;
+}
+
 export interface Profile {
   background: string;
   cv_base: string;

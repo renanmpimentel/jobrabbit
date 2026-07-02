@@ -39,6 +39,31 @@ impl SearchVariant {
     }
 }
 
+/// A job site the agent may search/apply on. Built-ins are seeded from
+/// [`crate::ats::builtin_sources`]; the user can toggle them and add custom ones.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JobSource {
+    pub id: i64,
+    pub name: String,
+    pub domain: String,
+    pub enabled: bool,
+    pub builtin: bool,
+    pub created_at: String,
+}
+
+impl JobSource {
+    pub fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            name: row.get("name")?,
+            domain: row.get("domain")?,
+            enabled: row.get::<_, i64>("enabled")? != 0,
+            builtin: row.get::<_, i64>("builtin")? != 0,
+            created_at: row.get("created_at")?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Job {
     pub id: i64,

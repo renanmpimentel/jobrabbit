@@ -44,7 +44,20 @@ impl Db {
         let db = Self { conn };
         db.migrate_answer_keys()?;
         db.seed_answers()?;
+        db.seed_sources()?;
         Ok(db)
+    }
+
+    /// Ensures the built-in job sources exist (idempotent by domain).
+    fn seed_sources(&self) -> Result<()> {
+        for (name, domain) in crate::ats::builtin_sources() {
+            self.conn.execute(
+                "INSERT OR IGNORE INTO job_sources (name, domain, enabled, builtin, created_at)
+                 VALUES (?1, ?2, 1, 1, ?3)",
+                params![name, domain, now_rfc3339()],
+            )?;
+        }
+        Ok(())
     }
 
     /// Migrates legacy Portuguese answer keys to the current English keys,
@@ -197,6 +210,47 @@ impl Db {
     pub fn delete_variant(&self, id: i64) -> Result<()> {
         self.conn
             .execute("DELETE FROM search_variants WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    // ---- Job sources ------------------------------------------------------
+
+    /// Adds a custom source (or re-enables/renames an existing domain). Returns the id.
+    pub fn add_source(&self, name: &str, domain: &str) -> Result<i64> {
+        self.conn.execute(
+            "INSERT INTO job_sources (name, domain, enabled, builtin, created_at) VALUES (?1, ?2, 1, 0, ?3)
+             ON CONFLICT(domain) DO UPDATE SET name = ?1, enabled = 1",
+            params![name, domain, now_rfc3339()],
+        )?;
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM job_sources WHERE domain = ?1",
+            params![domain],
+            |r| r.get(0),
+        )?;
+        Ok(id)
+    }
+
+    pub fn list_sources(&self) -> Result<Vec<JobSource>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, domain, enabled, builtin, created_at FROM job_sources ORDER BY builtin DESC, id",
+        )?;
+        let rows = stmt
+            .query_map([], JobSource::from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn set_source_enabled(&self, id: i64, enabled: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE job_sources SET enabled = ?1 WHERE id = ?2",
+            params![enabled as i64, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_source(&self, id: i64) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM job_sources WHERE id = ?1", params![id])?;
         Ok(())
     }
 
@@ -646,6 +700,33 @@ mod tests {
         assert!(!db.list_variants().unwrap()[0].enabled);
         db.delete_variant(id).unwrap();
         assert!(db.list_variants().unwrap().is_empty());
+    }
+
+    #[test]
+    fn sources_seeded_and_crud() {
+        let db = Db::open_in_memory().unwrap();
+        // Built-ins are seeded, enabled, and marked builtin.
+        let seeded = db.list_sources().unwrap();
+        assert_eq!(seeded.len(), crate::ats::builtin_sources().len());
+        assert!(seeded.iter().all(|s| s.builtin && s.enabled));
+        assert!(seeded.iter().any(|s| s.domain == "linkedin.com"));
+
+        // Add a custom source.
+        let id = db.add_source("Remote OK", "remoteok.com").unwrap();
+        let after = db.list_sources().unwrap();
+        assert_eq!(after.len(), seeded.len() + 1);
+        let custom = after.iter().find(|s| s.id == id).unwrap();
+        assert!(!custom.builtin && custom.enabled);
+
+        // Toggle + delete the custom one.
+        db.set_source_enabled(id, false).unwrap();
+        assert!(!db.list_sources().unwrap().iter().find(|s| s.id == id).unwrap().enabled);
+        db.delete_source(id).unwrap();
+        assert_eq!(db.list_sources().unwrap().len(), seeded.len());
+
+        // Seeding again is idempotent (no duplicates by domain).
+        db.seed_sources().unwrap();
+        assert_eq!(db.list_sources().unwrap().len(), seeded.len());
     }
 
     #[test]

@@ -35,8 +35,8 @@ struct Assets;
 use crate::config::Settings;
 use crate::core::{actions, persist, AgentStatus};
 use crate::db::models::{
-    Answer, Application, CvReview, CvVersion, Feedback, Job, PendingAction, Profile, SearchVariant,
-    Stats,
+    Answer, Application, CvReview, CvVersion, Feedback, Job, JobSource, PendingAction, Profile,
+    SearchVariant, Stats,
 };
 use crate::db::Db;
 use crate::event::AppEvent;
@@ -178,6 +178,7 @@ fn router(state: AppState) -> Router {
         .route("/api/applications", get(get_applications))
         .route("/api/feedback", get(get_feedback))
         .route("/api/variants", get(get_variants).post(post_variant))
+        .route("/api/sources", get(get_sources).post(post_source))
         .route("/api/profile", get(get_profile).post(post_profile))
         .route("/api/settings", get(get_settings).post(post_settings))
         .route("/api/answers", get(get_answers).post(post_answer))
@@ -199,6 +200,8 @@ fn router(state: AppState) -> Router {
         .route("/api/reset-runs", post(reset_runs))
         .route("/api/variants/:id", delete(delete_variant))
         .route("/api/variants/:id/toggle", post(toggle_variant))
+        .route("/api/sources/:id", delete(delete_source))
+        .route("/api/sources/:id/toggle", post(toggle_source))
         .route("/api/pending/:id/resolve", post(resolve_pending))
         .route("/api/pending/:id/approve", post(approve_pending))
         .route("/api/pending/:id/answer", post(answer_pending))
@@ -603,6 +606,70 @@ async fn toggle_variant(
         .find(|v| v.id == id)
         .ok_or((StatusCode::NOT_FOUND, "variant not found".into()))?;
     db.set_variant_enabled(id, !cur.enabled).map_err(internal)?;
+    Ok(ok())
+}
+
+// ---- Job sources -----------------------------------------------------------
+
+async fn get_sources(State(s): State<AppState>) -> Result<Json<Vec<JobSource>>, ApiError> {
+    let db = s.db.lock().unwrap();
+    db.list_sources().map(Json).map_err(internal)
+}
+
+#[derive(Deserialize)]
+struct SourceBody {
+    #[serde(default)]
+    name: String,
+    domain: String,
+}
+
+/// Light normalization of a user-entered job-site domain: lowercase, strip the
+/// scheme and any path/query, keep the bare host. Returns "" if empty.
+fn normalize_domain(raw: &str) -> String {
+    let lower = raw.trim().to_ascii_lowercase();
+    let host = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .unwrap_or(&lower);
+    host.split('/').next().unwrap_or(host).trim().to_string()
+}
+
+async fn post_source(
+    State(s): State<AppState>,
+    Json(body): Json<SourceBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let domain = normalize_domain(&body.domain);
+    if domain.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "domain required".into()));
+    }
+    let name = body.name.trim();
+    let name = if name.is_empty() { domain.clone() } else { name.to_string() };
+    let db = s.db.lock().unwrap();
+    db.add_source(&name, &domain).map_err(internal)?;
+    Ok(ok())
+}
+
+async fn delete_source(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let db = s.db.lock().unwrap();
+    db.delete_source(id).map_err(internal)?;
+    Ok(ok())
+}
+
+async fn toggle_source(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let db = s.db.lock().unwrap();
+    let cur = db
+        .list_sources()
+        .map_err(internal)?
+        .into_iter()
+        .find(|x| x.id == id)
+        .ok_or((StatusCode::NOT_FOUND, "source not found".into()))?;
+    db.set_source_enabled(id, !cur.enabled).map_err(internal)?;
     Ok(ok())
 }
 

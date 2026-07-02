@@ -17,6 +17,17 @@ CREATE TABLE IF NOT EXISTS search_variants (
     created_at TEXT NOT NULL
 );
 
+-- Fontes de vaga (sites onde o agente busca/aplica). Semeada com plataformas
+-- conhecidas (builtin=1); o usuário liga/desliga e pode adicionar as suas (builtin=0).
+CREATE TABLE IF NOT EXISTS job_sources (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    domain     TEXT NOT NULL UNIQUE,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    builtin    INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
 -- Vagas encontradas.
 CREATE TABLE IF NOT EXISTS jobs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

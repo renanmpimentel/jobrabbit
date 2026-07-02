@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
-import { useSettings, useAnswers, useInvalidate, post, type Settings } from "../hooks";
+import { Loader2, Trash2 } from "lucide-react";
+import { useSettings, useAnswers, useSources, useInvalidate, post, del, type Settings } from "../hooks";
 import { LANGUAGES } from "../i18n";
-import { Card, CardHeader, Button, Input, Toggle, Select } from "../ui";
+import { Card, CardHeader, Button, Input, Toggle, Select, Badge, Empty, SkeletonRows, ErrorState } from "../ui";
 import { useToast } from "../toast";
 
 // Identity field keys (must match IDENTITY_FIELDS in src/db/models.rs) paired
@@ -40,11 +40,14 @@ export default function Config() {
   const { t, i18n } = useTranslation();
   const settings = useSettings();
   const answers = useAnswers();
+  const sources = useSources();
   const invalidate = useInvalidate();
   const toast = useToast();
   const [s, setS] = useState<Settings | null>(null);
   const [ident, setIdent] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [srcName, setSrcName] = useState("");
+  const [srcDomain, setSrcDomain] = useState("");
 
   useEffect(() => {
     if (settings.data) setS(settings.data);
@@ -104,6 +107,30 @@ export default function Config() {
       .catch((e) => toast.error(String(e)));
   };
 
+  // Job sources persist immediately (like search variants), independent of Save.
+  const addSource = () => {
+    if (!srcDomain.trim()) return;
+    post("/sources", { name: srcName, domain: srcDomain })
+      .then(() => {
+        setSrcName("");
+        setSrcDomain("");
+        invalidate();
+        toast.success(t("common.saved"));
+      })
+      .catch((e) => toast.error(String(e)));
+  };
+  const toggleSource = (id: number) =>
+    post(`/sources/${id}/toggle`)
+      .then(invalidate)
+      .catch((e) => toast.error(String(e)));
+  const removeSource = (id: number) =>
+    del(`/sources/${id}`)
+      .then(() => {
+        invalidate();
+        toast.success(t("common.removed"));
+      })
+      .catch((e) => toast.error(String(e)));
+
   return (
     <div className="space-y-5">
       <Card>
@@ -161,6 +188,58 @@ export default function Config() {
               <option value="hybrid">{t("config.workModelHybrid")}</option>
             </Select>
           </Row>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title={t("config.sourcesTitle")} hint={t("config.sourcesHint")} />
+        {sources.isLoading ? (
+          <SkeletonRows rows={3} />
+        ) : sources.isError ? (
+          <ErrorState message={t("common.error")} retryLabel={t("common.retry")} onRetry={() => sources.refetch()} />
+        ) : !sources.data?.length ? (
+          <Empty>{t("config.sourcesEmpty")}</Empty>
+        ) : (
+          <ul className="divide-y divide-border">
+            {sources.data.map((src) => (
+              <li key={src.id} className="flex items-center gap-3 px-4 py-3">
+                <Toggle on={src.enabled} onClick={() => toggleSource(src.id)} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-fg">{src.name}</div>
+                  <div className="truncate text-sm text-fg-muted">{src.domain}</div>
+                </div>
+                {!src.enabled && <Badge>{t("config.sourceDisabled")}</Badge>}
+                {!src.builtin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-fg-subtle hover:bg-danger-tint hover:text-danger"
+                    aria-label={t("config.sourceRemove")}
+                    onClick={() => removeSource(src.id)}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border p-4">
+          <Input
+            value={srcName}
+            onChange={(e) => setSrcName(e.target.value)}
+            placeholder={t("config.sourceNamePlaceholder")}
+            className="max-w-xs"
+          />
+          <Input
+            value={srcDomain}
+            onChange={(e) => setSrcDomain(e.target.value)}
+            placeholder={t("config.sourceDomainPlaceholder")}
+            className="max-w-xs"
+          />
+          <Button variant="primary" onClick={addSource}>
+            {t("config.sourceAdd")}
+          </Button>
         </div>
       </Card>
 
