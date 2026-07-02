@@ -52,11 +52,11 @@ a single Rust binary built for Linux.
 | 🤖 **Real-browser agent** | Spawns `claude` over a PTY, reads `stream-json`, and drives **Claude in Chrome** (your real, logged-in browser — no headless, no Playwright). |
 | 📄 **Profile import** | Build your profile from a **résumé** (PDF / DOCX / TXT) or your **LinkedIn URL** — the agent extracts background, base CV and suggested search variants. |
 | 🎯 **Fit scoring** | Each job is scored 0.0–1.0 against your profile (seniority, stack, work model, requirements). |
-| 🧩 **ATS-aware playbooks** | Per-platform recipes (Gupy, LinkedIn, Greenhouse, Lever, Workday, generic) so the agent knows how to navigate each site. |
+| 🧩 **ATS-aware playbooks** | Detects **12 platforms** — Gupy, LinkedIn, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, Indeed, Solides, Vagas.com.br, InfoJobs, inHire (+ a generic fallback) — with per-platform recipes so the agent knows how to navigate each site. |
 | 🗂️ **Answer bank** | Reusable screening answers (salary expectation, notice period, work model, …) the agent uses to fill forms; learns new ones as it goes. |
 | 🌐 **Job sources** | Pick which sites the agent searches — 12 known platforms seeded (LinkedIn, Gupy, Greenhouse, Lever, Workday, Indeed, …), plus add your own — from Config. |
 | ⚖️ **Apply modes** | `review` (prepare → you approve), `autonomous` (auto-apply on high fit), `hybrid` (auto above a threshold). Plus a global **dry-run** and a master **human-review** gate (on by default) that always stops for your approval before filling or submitting — even in autonomous/hybrid. |
-| 🔔 **Live pending alerts** | When the agent gets blocked (login, captcha, a screening question) you get an instant **in-app toast**, a **banner** on the Execution screen, and a **count badge** on Pending — plus the desktop notification. |
+| 🔔 **Live pending alerts** | When the agent gets blocked (login, captcha, a screening question) you get an instant **in-app toast**, a **banner** on the Execution screen, and a **count badge** on Pending — plus the desktop notification. The Pending screen shows each blocker with the **full job context inline** (fit, company, expandable description). |
 | 📎 **Reliable upload** | Résumés are uploaded as a **PDF rendered from your CV**, so uploads never fail because the site can't take a `.docx`. |
 | 📊 **ATS résumé checker** | Score your CV 0–100 with an actionable report and a **keyword-gap analysis** (present vs. missing, by importance) you can apply to an improved CV in one click. |
 | 🌍 **Bilingual** | **English by default**, **pt-BR** selectable — UI *and* agent language. See [Languages & i18n](#-languages--i18n). |
