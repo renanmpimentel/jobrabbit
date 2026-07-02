@@ -97,6 +97,7 @@
     "answer": "Responder",
     "resolve": "Resolver",
     "view": "Ver",
+    "jobDescription": "Descrição da vaga",
     "noActions": "Nenhuma pendência.",
     "noActionsHint": "Quando o agente precisa de uma decisão ou trava, aparece aqui.",
     "error": "Não foi possível carregar as pendências.",

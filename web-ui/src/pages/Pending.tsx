@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { AlertOctagon, HelpCircle, CheckCircle2, ExternalLink, ChevronRight, FileText } from "lucide-react";
-import { usePending, useApplications, useInvalidate, post, type PendingAction, type Application } from "../hooks";
+import { usePending, useApplications, useJobs, useInvalidate, post, type PendingAction, type Application, type Job } from "../hooks";
 import {
   Card,
   CardHeader,
@@ -12,6 +12,8 @@ import {
   Callout,
   SectionTitle,
   StatusBadge,
+  ScoreBadge,
+  Badge,
   SkeletonRows,
   ErrorState,
   cn,
@@ -65,8 +67,49 @@ function OpenJobLink({ url }: { url: string }) {
   );
 }
 
+/// Full job context shown inline within a pending item, so the user doesn't have to
+/// switch tabs: fit score, title (link), company, source, and an expandable description.
+function JobSummary({ job }: { job: Job }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3 rounded-md border border-border bg-surface-2/60 px-3 py-2.5">
+      <div className="flex items-start gap-3">
+        <ScoreBadge value={job.fit_score} />
+        <a href={job.url} target="_blank" rel="noreferrer" className="group/job min-w-0 flex-1" title={job.title}>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-fg transition-colors group-hover/job:text-accent">
+              {job.title}
+            </span>
+            <ExternalLink size={12} className="shrink-0 text-fg-subtle opacity-0 transition group-hover/job:opacity-100" />
+          </div>
+          <div className="truncate text-sm text-fg-subtle">{job.company}</div>
+        </a>
+        {job.source && <Badge>{job.source}</Badge>}
+      </div>
+      {job.description && (
+        <div className="mt-2">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="inline-flex items-center gap-1 text-xs text-fg-muted transition hover:text-fg"
+          >
+            <ChevronRight size={13} className={cn("transition-transform", open && "rotate-90")} />
+            {t("pending.jobDescription")}
+          </button>
+          {open && (
+            <pre className="scroll-thin mt-2 max-h-64 overflow-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-fg">
+              {job.description}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /// Blocking (login/captcha/answer) and decision (field) render as prominent callouts.
-function EmphasizedItem({ p, tier, onChange }: { p: PendingAction; tier: Tier; onChange: () => void }) {
+function EmphasizedItem({ p, tier, job, onChange }: { p: PendingAction; tier: Tier; job?: Job; onChange: () => void }) {
   const { t } = useTranslation();
   const [answer, setAnswer] = useState("");
   const { busy, act } = useAct(onChange);
@@ -79,6 +122,7 @@ function EmphasizedItem({ p, tier, onChange }: { p: PendingAction; tier: Tier; o
         <div className="mb-1.5">
           <StatusBadge tier={tier}>{kindLabel}</StatusBadge>
         </div>
+        {job && <JobSummary job={job} />}
         <div className="text-sm text-fg">{p.description}</div>
 
         {p.kind === "answer_needed" && (
@@ -114,7 +158,7 @@ function EmphasizedItem({ p, tier, onChange }: { p: PendingAction; tier: Tier; o
 
 /// Routine (approval) — compact row + expandable review of the proposed CV/cover
 /// (the content the agent will fill on the site). Approve = strong; Resolve = ghost.
-function RoutineItem({ p, app, onChange }: { p: PendingAction; app?: Application; onChange: () => void }) {
+function RoutineItem({ p, app, job, onChange }: { p: PendingAction; app?: Application; job?: Job; onChange: () => void }) {
   const { t } = useTranslation();
   const { busy, act } = useAct(onChange);
   const [open, setOpen] = useState(false);
@@ -123,6 +167,7 @@ function RoutineItem({ p, app, onChange }: { p: PendingAction; app?: Application
 
   return (
     <motion.li variants={fadeUp} className="px-4 py-2.5">
+      {job && <JobSummary job={job} />}
       <div className="flex items-center gap-3">
         <StatusBadge tier="routine">{kindLabel}</StatusBadge>
         <span className="min-w-0 flex-1 truncate text-sm text-fg">{p.description}</span>
@@ -175,11 +220,13 @@ function TierSection({
   tier,
   items,
   appByJob,
+  jobById,
   onChange,
 }: {
   tier: Tier;
   items: PendingAction[];
   appByJob: Map<number, Application>;
+  jobById: Map<number, Job>;
   onChange: () => void;
 }) {
   const { t } = useTranslation();
@@ -194,14 +241,26 @@ function TierSection({
         <Card>
           <motion.ul variants={stagger} initial="hidden" animate="show" className="divide-y divide-border">
             {items.map((p) => (
-              <RoutineItem key={p.id} p={p} app={p.job_id != null ? appByJob.get(p.job_id) : undefined} onChange={onChange} />
+              <RoutineItem
+                key={p.id}
+                p={p}
+                app={p.job_id != null ? appByJob.get(p.job_id) : undefined}
+                job={p.job_id != null ? jobById.get(p.job_id) : undefined}
+                onChange={onChange}
+              />
             ))}
           </motion.ul>
         </Card>
       ) : (
         <motion.ul variants={stagger} initial="hidden" animate="show" className="space-y-2.5">
           {items.map((p) => (
-            <EmphasizedItem key={p.id} p={p} tier={tier} onChange={onChange} />
+            <EmphasizedItem
+              key={p.id}
+              p={p}
+              tier={tier}
+              job={p.job_id != null ? jobById.get(p.job_id) : undefined}
+              onChange={onChange}
+            />
           ))}
         </motion.ul>
       )}
@@ -213,8 +272,10 @@ export default function Pending() {
   const { t } = useTranslation();
   const pending = usePending();
   const applications = useApplications();
+  const jobs = useJobs();
   const invalidate = useInvalidate();
   const appByJob = new Map((applications.data ?? []).map((a) => [a.job_id, a] as const));
+  const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j] as const));
 
   if (pending.isLoading) {
     return (
@@ -253,7 +314,7 @@ export default function Pending() {
   return (
     <div className="space-y-8">
       {TIER_ORDER.map((tier) => (
-        <TierSection key={tier} tier={tier} items={grouped[tier]} appByJob={appByJob} onChange={invalidate} />
+        <TierSection key={tier} tier={tier} items={grouped[tier]} appByJob={appByJob} jobById={jobById} onChange={invalidate} />
       ))}
     </div>
   );

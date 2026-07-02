@@ -97,6 +97,7 @@
     "answer": "Answer",
     "resolve": "Resolve",
     "view": "View",
+    "jobDescription": "Job description",
     "noActions": "No pending actions.",
     "noActionsHint": "When the agent needs a decision or gets blocked, it shows up here.",
     "error": "Couldn't load pending actions.",
