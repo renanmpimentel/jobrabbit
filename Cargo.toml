@@ -1,6 +1,6 @@
 [package]
 name = "jobrabbit"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2021"
 rust-version = "1.75"
 description = "Auto-apply to jobs from your terminal — orchestrates the Claude Code CLI + your real Chrome (Linux)."

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-02
+
+### Added
+- **Selectable job sources**: a new **Config → Job sources** list lets you choose
+  which sites the agent searches — seeded with 12 known platforms (LinkedIn, Gupy,
+  Greenhouse, Lever, Workday, Ashby, SmartRecruiters, Indeed, and the Brazilian
+  boards) and extendable with your own domains. Enabled sources are injected into
+  the search prompt so the agent looks **only** where you selected, skipping any
+  that are unavailable. Custom sites fall back to the Generic apply playbook.
+- **ATS keyword-gap analysis**: résumé reviews against a target job now surface the
+  job's keywords as **chips** — green when your CV already has them, amber when
+  missing, grouped by **Required / Preferred**. An **Apply missing** action
+  regenerates the improved CV weaving in the missing keywords you genuinely qualify
+  for (never inventing), with anti-keyword-stuffing guardrails.
+
+### Changed
+- **Pending screen shows full job context**: each pending item now renders the
+  job's fit score, title, company, source and an expandable description inline, so
+  you can understand and resolve a blocked run without switching tabs.
+
 ## [1.2.0] - 2026-07-01
 
 ### Added
