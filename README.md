@@ -13,6 +13,8 @@
 [![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
+[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows/)
 [![Claude](https://img.shields.io/badge/Claude_Code-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
@@ -35,7 +37,7 @@ captcha, a login, or a field it can't fill on its own.
 It ships **two front-ends from a single Rust binary**: a polished **local web UI** (the
 default) and a classic **terminal UI** (`--tui`). Inspired by
 [claudia-rh](https://github.com/JohnGabie/claudia-rh) (Windows + Tauri/React); jobRabbit is
-a single Rust binary built for Linux.
+a single Rust binary that runs on Linux, macOS and Windows.
 
 <div align="center">
 
@@ -65,7 +67,7 @@ a single Rust binary built for Linux.
 
 - **Front-ends** — a local **web UI** (React + Vite + Tailwind, served by an Axum backend) and a **TUI** (ratatui/crossterm). Both compose the same core.
 - **Agent** — the app spawns `claude` in a PTY and reads `--output-format stream-json`. The agent emits an **NDJSON protocol** (`job` / `application` / `pending` / `answer` / `feedback` / `profile` / `cv_review`) that the app persists to SQLite. The agent only emits events; the DB is owned by the UI loop.
-- **Linux integrations** — idle (`user-idle`), notifications (`notify-rust` / D-Bus), keyring (`keyring` v3 / Secret Service).
+- **Desktop integrations** — cross-platform, resolved per OS: notifications (`notify-rust`) on Linux (D-Bus) and macOS (Windows is a best-effort no-op), keyring (`keyring` v3 — Secret Service / Keychain / Credential Manager), link opening (`xdg-open` / `open` / `start`) and Chrome discovery. Idle detection (`user-idle`, for auto-run-on-idle) is Linux-only for now.
 
 ## 📋 Prerequisites (host / desktop)
 
