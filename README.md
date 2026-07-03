@@ -74,11 +74,49 @@ a single Rust binary that runs on Linux, macOS and Windows.
 jobRabbit runs on **Linux, macOS and Windows**. Whatever the OS, it *drives* two things
 that must live on your desktop:
 
-- **Claude Code CLI** — installed and authenticated (run `claude` once to log in).
-- **Google Chrome** + the **Claude in Chrome** extension — installed and logged in.
+- **Claude Code CLI** — installed and authenticated (run `claude` once to log in). Get it at [claude.com/claude-code](https://claude.com/claude-code). *(Requires a paid Claude plan.)*
+- **Google Chrome** + the **Claude in Chrome** extension — installed and logged in. Get the extension at [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome).
 
 That's everything a prebuilt binary needs. Building from source additionally needs Rust and
 Node (see *Build from source* below).
+
+## 🐣 First time? Start here
+
+Never used a terminal? No problem — follow these five steps.
+
+1. **Install Claude Code** (the engine jobRabbit drives). Follow the guide at
+   [claude.com/claude-code](https://claude.com/claude-code), then open a terminal and run
+   `claude` once to log in. *(A paid Claude plan is required.)*
+2. **Add the Claude in Chrome extension** so Claude can use your browser. Install it from
+   [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome) and sign in with the
+   same account. *(Beta; part of a paid plan.)*
+3. **Download jobRabbit** for your computer from the
+   [latest release](https://github.com/renanmpimentel/jobrabbit/releases/latest):
+   - **Windows** → `jobrabbit-windows-x86_64.exe`
+   - **Mac** with an Apple chip (M1/M2/M3/M4) → `jobrabbit-macos-arm64`
+   - **Mac** with an Intel chip → `jobrabbit-macos-x86_64`
+   - **Linux** → `jobrabbit-linux-x86_64`
+
+   > Not sure which Mac you have?  → **About This Mac**. A line saying *"Apple M…"* means
+   > Apple chip; *"Intel"* means Intel.
+4. **Open it:**
+   - **Windows** — double-click the downloaded file. If Windows shows *"Windows protected
+     your PC"*, click **More info → Run anyway** (the app just isn't code-signed yet — it's
+     not malware).
+   - **Mac** — open the **Terminal** app (press ⌘+Space, type *Terminal*), then paste:
+     ```bash
+     cd ~/Downloads && chmod +x jobrabbit-macos-* && ./jobrabbit-macos-*
+     ```
+     If macOS says *"unidentified developer"*, go to **System Settings → Privacy &
+     Security**, scroll down and click **Open Anyway**, then run the command again.
+   - **Linux** — open a terminal in your Downloads folder and run:
+     ```bash
+     chmod +x jobrabbit-linux-x86_64 && ./jobrabbit-linux-x86_64
+     ```
+5. **You're in** — a tab opens in your browser with the jobRabbit dashboard. That's the app.
+   Leave the small terminal/console window open while you use it; closing it stops jobRabbit.
+
+> Comfortable with a terminal already? Skip to the [install options](#-install) below.
 
 ## 🚀 Install
 
