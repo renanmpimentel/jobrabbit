@@ -109,7 +109,9 @@ pub fn approval_prompt(
     let ats = crate::ats::detect(&job.url);
     let playbook = crate::ats::playbook(ats, settings.locale);
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
-    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let shots = crate::config::data_dir()
+        .map_err(|e| e.to_string())?
+        .join("screenshots");
     let _ = std::fs::create_dir_all(&shots);
     let shots_str = shots.to_string_lossy().to_string();
     // Upload a PDF the Chrome tool can handle (rendered from the approved CV,
@@ -137,13 +139,11 @@ pub fn approval_prompt(
 
 /// Prompt for apply-by-URL flow: extract job details from URL, detect language,
 /// generate CV/cover in that language, evaluate fit, and apply (or simulate).
-pub fn apply_by_url_prompt(
-    url: &str,
-    db: &Db,
-    settings: &Settings,
-) -> Result<String, String> {
+pub fn apply_by_url_prompt(url: &str, db: &Db, settings: &Settings) -> Result<String, String> {
     let answers = prompts::answers_block(&db.answers_map().unwrap_or_default(), settings.locale);
-    let shots = crate::config::data_dir().map_err(|e| e.to_string())?.join("screenshots");
+    let shots = crate::config::data_dir()
+        .map_err(|e| e.to_string())?
+        .join("screenshots");
     let _ = std::fs::create_dir_all(&shots);
     let shots_str = shots.to_string_lossy().to_string();
     // Upload a PDF (rendered from the base CV) that the Chrome tool can handle.

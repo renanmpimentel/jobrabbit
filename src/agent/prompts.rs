@@ -83,6 +83,7 @@ fn cv_ats_guidance(locale: Locale) -> &'static str {
 /// The agent should use Chrome (already logged in) to search and, for each
 /// relevant job, return one JSON per line (NDJSON) with the expected fields —
 /// easy to parse in jobRabbit.
+#[allow(clippy::too_many_arguments)]
 pub fn search_and_evaluate(
     profile: &Profile,
     variant: &SearchVariant,
@@ -1160,7 +1161,16 @@ mod tests {
             src("Indeed", "indeed.com", false),
         ];
         let p = search_and_evaluate(
-            &sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &sources,
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+            &sources,
         );
         assert!(p.contains("Job sources"));
         assert!(p.contains("LinkedIn (linkedin.com)"));
@@ -1168,7 +1178,16 @@ mod tests {
 
         // No sources → no restriction block.
         let none = search_and_evaluate(
-            &sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &[],
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+            &[],
         );
         assert!(!none.contains("Job sources"));
     }
@@ -1374,9 +1393,18 @@ mod tests {
             "remote",
             &[],
         );
-        assert!(gated.contains("HUMAN REVIEW"), "gate must force human-review policy");
-        assert!(!gated.contains("## Policy: AUTONOMOUS"), "autonomous policy must be suppressed");
-        assert!(gated.contains("\"ready\""), "must instruct reporting ready for approval");
+        assert!(
+            gated.contains("HUMAN REVIEW"),
+            "gate must force human-review policy"
+        );
+        assert!(
+            !gated.contains("## Policy: AUTONOMOUS"),
+            "autonomous policy must be suppressed"
+        );
+        assert!(
+            gated.contains("\"ready\""),
+            "must instruct reporting ready for approval"
+        );
 
         // apply_by_url in REVIEW mode must instruct not to submit and to report ready.
         let by_url = apply_by_url(
@@ -1388,8 +1416,14 @@ mod tests {
             "/tmp/shots",
             Locale::En,
         );
-        assert!(by_url.contains("REVIEW MODE"), "apply-by-url must enter review mode");
-        assert!(by_url.contains("\"ready\""), "apply-by-url review must report ready with cv/cover");
+        assert!(
+            by_url.contains("REVIEW MODE"),
+            "apply-by-url must enter review mode"
+        );
+        assert!(
+            by_url.contains("\"ready\""),
+            "apply-by-url review must report ready with cv/cover"
+        );
     }
 
     #[test]
@@ -1397,7 +1431,10 @@ mod tests {
         let general = review_cv("my cv", None, Locale::En);
         assert!(general.contains("cv_review"));
         assert!(general.to_lowercase().contains("parseability"));
-        assert!(general.contains("90"), "EN review_cv must mention target bar of 90");
+        assert!(
+            general.contains("90"),
+            "EN review_cv must mention target bar of 90"
+        );
         let with_target = review_cv("my cv", Some("Eng Manager Kafka"), Locale::En);
         assert!(with_target.contains("Eng Manager Kafka"));
         assert!(with_target.contains("match"));
@@ -1407,15 +1444,26 @@ mod tests {
     fn improve_cv_iterates_to_90() {
         let en_prompt = improve_cv("my cv", Some("Senior Backend"), &[], Locale::En);
         assert!(en_prompt.contains("cv_improved"), "must emit cv_improved");
-        assert!(en_prompt.contains("cv_review"), "must emit cv_review after iteration");
-        assert!(en_prompt.contains("90"), "must target 90 score in iteration");
-        assert!(en_prompt.contains("iterate") || en_prompt.contains("pass"),
-                "must mention iteration/passes for self-evaluation");
+        assert!(
+            en_prompt.contains("cv_review"),
+            "must emit cv_review after iteration"
+        );
+        assert!(
+            en_prompt.contains("90"),
+            "must target 90 score in iteration"
+        );
+        assert!(
+            en_prompt.contains("iterate") || en_prompt.contains("pass"),
+            "must mention iteration/passes for self-evaluation"
+        );
 
         let pt_prompt = improve_cv("meu cv", Some("Gerente Sênior"), &[], Locale::PtBr);
         assert!(pt_prompt.contains("cv_improved"));
         assert!(pt_prompt.contains("cv_review"));
-        assert!(pt_prompt.contains("90"), "PT improve_cv must target 90 score");
+        assert!(
+            pt_prompt.contains("90"),
+            "PT improve_cv must target 90 score"
+        );
     }
 
     #[test]
@@ -1436,9 +1484,34 @@ mod tests {
             enabled: true,
             created_at: "x".into(),
         };
-        let pt = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::PtBr, false, "remote", &[]);
-        assert!(pt.contains("IDIOMA DA"), "search flow must generate CV/cover in the job's language");
-        let en = search_and_evaluate(&sample_profile(), &v, "review", false, false, 0.9, Locale::En, false, "remote", &[]);
+        let pt = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::PtBr,
+            false,
+            "remote",
+            &[],
+        );
+        assert!(
+            pt.contains("IDIOMA DA"),
+            "search flow must generate CV/cover in the job's language"
+        );
+        let en = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+            &[],
+        );
         assert!(en.contains("LANGUAGE OF THE JOB"));
     }
 
@@ -1468,10 +1541,27 @@ mod tests {
 
     #[test]
     fn apply_prompts_include_fill_hygiene() {
-        let p = apply_by_url("https://x/1", "", "- k: v", false, false, "/tmp", Locale::En);
+        let p = apply_by_url(
+            "https://x/1",
+            "",
+            "- k: v",
+            false,
+            false,
+            "/tmp",
+            Locale::En,
+        );
         assert!(p.contains("CLEAR it first"));
         let p = apply_for_job(
-            "T", "C", "https://x/1", "cv", "cover", "", "gupy", "pb", "- k: v", "/tmp",
+            "T",
+            "C",
+            "https://x/1",
+            "cv",
+            "cover",
+            "",
+            "gupy",
+            "pb",
+            "- k: v",
+            "/tmp",
             Locale::PtBr,
         );
         assert!(p.contains("LIMPE o campo primeiro"));
@@ -1528,7 +1618,10 @@ mod tests {
             "/tmp/shots",
             Locale::En,
         );
-        assert!(prompt.contains("https://example.com/job/123"), "must include the URL");
+        assert!(
+            prompt.contains("https://example.com/job/123"),
+            "must include the URL"
+        );
         assert!(
             prompt.to_lowercase().contains("language"),
             "must mention language detection"
@@ -1545,8 +1638,14 @@ mod tests {
             "must output detected_language field"
         );
         assert!(prompt.contains("Claude in Chrome"), "must use Chrome");
-        assert!(prompt.contains("Write"), "must instruct Write tool for screenshot");
-        assert!(prompt.contains("/tmp/shots"), "must include screenshot directory");
+        assert!(
+            prompt.contains("Write"),
+            "must instruct Write tool for screenshot"
+        );
+        assert!(
+            prompt.contains("/tmp/shots"),
+            "must include screenshot directory"
+        );
 
         // Test Portuguese locale
         let pt_prompt = apply_by_url(

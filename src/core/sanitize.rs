@@ -156,7 +156,10 @@ mod tests {
 
     #[test]
     fn strips_label_without_timestamp() {
-        assert_eq!(sanitize_answer_value("Assistant: hello there"), "hello there");
+        assert_eq!(
+            sanitize_answer_value("Assistant: hello there"),
+            "hello there"
+        );
     }
 
     #[test]

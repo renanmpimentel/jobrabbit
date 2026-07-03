@@ -160,8 +160,19 @@ pub async fn serve(db: Db, port: u16) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("jobRabbit web at http://{addr}");
     println!("🐇 jobRabbit — open http://{addr} in your browser (Ctrl+C to exit)");
-    // Automatically opens the browser when there is a graphical session.
-    if std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some() {
+    // Automatically opens the browser. On Linux this needs a graphical session
+    // (DISPLAY/Wayland); macOS and Windows are always graphical desktops.
+    let open_browser = {
+        #[cfg(target_os = "linux")]
+        {
+            std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            true
+        }
+    };
+    if open_browser {
         crate::platform::open_url(&format!("http://{addr}"));
     }
     axum::serve(listener, app).await?;
@@ -391,10 +402,13 @@ async fn post_answer(
     State(s): State<AppState>,
     Json(body): Json<AnswerBody>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let label = crate::db::models::answer_label(&body.key)
-        .ok_or((StatusCode::BAD_REQUEST, format!("unknown answer key: {}", body.key)))?;
+    let label = crate::db::models::answer_label(&body.key).ok_or((
+        StatusCode::BAD_REQUEST,
+        format!("unknown answer key: {}", body.key),
+    ))?;
     let db = s.db.lock().unwrap();
-    db.set_answer(&body.key, label, &body.value).map_err(internal)?;
+    db.set_answer(&body.key, label, &body.value)
+        .map_err(internal)?;
     Ok(ok())
 }
 
@@ -458,16 +472,16 @@ async fn download_cv_version(
 }
 
 /// Serves a screenshot PNG by application ID.
-async fn get_screenshot(
-    State(s): State<AppState>,
-    Path(id): Path<i64>,
-) -> Response {
+async fn get_screenshot(State(s): State<AppState>, Path(id): Path<i64>) -> Response {
     let path = {
         let db = s.db.lock().unwrap();
         match db.get_application(id).ok().flatten() {
             Some(app) => match &app.screenshot_path {
                 Some(p) if !p.is_empty() => p.clone(),
-                _ => return (StatusCode::NOT_FOUND, "no screenshot for this application").into_response(),
+                _ => {
+                    return (StatusCode::NOT_FOUND, "no screenshot for this application")
+                        .into_response()
+                }
             },
             None => return (StatusCode::NOT_FOUND, "application not found").into_response(),
         }
@@ -643,7 +657,11 @@ async fn post_source(
         return Err((StatusCode::BAD_REQUEST, "domain required".into()));
     }
     let name = body.name.trim();
-    let name = if name.is_empty() { domain.clone() } else { name.to_string() };
+    let name = if name.is_empty() {
+        domain.clone()
+    } else {
+        name.to_string()
+    };
     let db = s.db.lock().unwrap();
     db.add_source(&name, &domain).map_err(internal)?;
     Ok(ok())
@@ -830,21 +848,16 @@ async fn post_session_continue(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     // Check if agent is already running
     if matches!(*s.agent_status.lock().unwrap(), AgentStatus::Running) {
-        return Err((
-            StatusCode::CONFLICT,
-            "agent is already running".into(),
-        ));
+        return Err((StatusCode::CONFLICT, "agent is already running".into()));
     }
 
     // Get the latest session ID
     let resume_sid = {
         let db = s.db.lock().unwrap();
-        db.latest_claude_session_id()
-            .map_err(internal)?
-            .ok_or((
-                StatusCode::BAD_REQUEST,
-                "no previous session to resume".into(),
-            ))?
+        db.latest_claude_session_id().map_err(internal)?.ok_or((
+            StatusCode::BAD_REQUEST,
+            "no previous session to resume".into(),
+        ))?
     };
 
     // Build the prompt
@@ -912,7 +925,10 @@ mod tests {
     #[test]
     fn answer_label_known_and_unknown() {
         assert_eq!(answer_label("cpf"), Some("CPF"));
-        assert_eq!(answer_label("salary_expectation"), Some("Salary expectation"));
+        assert_eq!(
+            answer_label("salary_expectation"),
+            Some("Salary expectation")
+        );
         assert_eq!(answer_label("not_a_real_key"), None);
     }
 }

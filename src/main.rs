@@ -1,4 +1,4 @@
-//! jobRabbit 🐇 — auto-application to jobs, 100% terminal (Linux).
+//! jobRabbit 🐇 — auto-application to jobs, 100% terminal (Linux/macOS/Windows).
 //!
 //! Orchestrates Claude Code CLI (`claude`) via PTY, reading stream-json to
 //! feed a TUI (ratatui). See the plan in docs/ for the architecture.

@@ -174,7 +174,10 @@ pub fn parse(line: &str) -> Option<AgentOutput> {
                                 } else {
                                     "preferred".to_string()
                                 },
-                                present: it.get("present").and_then(|x| x.as_bool()).unwrap_or(false),
+                                present: it
+                                    .get("present")
+                                    .and_then(|x| x.as_bool())
+                                    .unwrap_or(false),
                             })
                         })
                         .collect()
@@ -258,7 +261,11 @@ mod tests {
         let l = r#"{"type":"application","url":"https://x/1","cv":"my cv"}"#;
         match parse(l).unwrap() {
             AgentOutput::Application {
-                url, status, cv, screenshot, ..
+                url,
+                status,
+                cv,
+                screenshot,
+                ..
             } => {
                 assert_eq!(url, "https://x/1");
                 assert_eq!(status, "applied");
@@ -274,7 +281,10 @@ mod tests {
         let l = r#"{"type":"application","url":"https://x/1","status":"applied","screenshot":"/tmp/screenshot.png"}"#;
         match parse(l).unwrap() {
             AgentOutput::Application {
-                url, status, screenshot, ..
+                url,
+                status,
+                screenshot,
+                ..
             } => {
                 assert_eq!(url, "https://x/1");
                 assert_eq!(status, "applied");

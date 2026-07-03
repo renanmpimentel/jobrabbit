@@ -58,6 +58,46 @@ fn first_in_path(cands: &[&str]) -> Option<String> {
         .find_map(|b| crate::platform::which(b).map(|p| p.display().to_string()))
 }
 
+/// Locates a Chrome/Chromium install, per OS (PATH on Linux, app bundle on
+/// macOS, Program Files on Windows).
+fn find_chrome() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        first_in_path(&[
+            "google-chrome",
+            "google-chrome-stable",
+            "chromium",
+            "chromium-browser",
+            "chrome",
+        ])
+    }
+    #[cfg(target_os = "macos")]
+    {
+        [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        ]
+        .into_iter()
+        .find(|p| std::path::Path::new(p).is_file())
+        .map(|p| p.to_string())
+        .or_else(|| first_in_path(&["google-chrome", "chromium"]))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData"]
+            .into_iter()
+            .filter_map(std::env::var_os)
+            .map(|base| {
+                let mut p = std::path::PathBuf::from(base);
+                p.push(r"Google\Chrome\Application\chrome.exe");
+                p
+            })
+            .find(|p| p.is_file())
+            .map(|p| p.display().to_string())
+            .or_else(|| first_in_path(&["chrome"]))
+    }
+}
+
 /// Runs all environment/configuration checks.
 pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
     let mut checks = Vec::new();
@@ -76,26 +116,21 @@ pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
     }
 
     // 2) Google Chrome — required for Claude in Chrome integration.
-    match first_in_path(&[
-        "google-chrome",
-        "google-chrome-stable",
-        "chromium",
-        "chromium-browser",
-        "chrome",
-    ]) {
+    match find_chrome() {
         Some(p) => checks.push(Check::ok(
             "Google Chrome",
             format!("found in {p} — confirm that the Claude in Chrome extension is installed and logged in"),
         )),
         None if settings.use_chrome => checks.push(Check::warn(
             "Google Chrome",
-            "browser not found in PATH",
+            "browser not found",
             "Install Google Chrome and the Claude in Chrome extension (automation depends on logged-in Chrome).",
         )),
         None => checks.push(Check::ok("Google Chrome", "not required (Use Claude in Chrome is off)")),
     }
 
     // 3) Graphical session — Chrome and automatic browser opening depend on this.
+    #[cfg(target_os = "linux")]
     if std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some() {
         checks.push(Check::ok("Graphical session", "DISPLAY/Wayland detected"));
     } else {
@@ -105,17 +140,24 @@ pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
             "Run on your desktop (with graphical environment) for the UI to open and Chrome to work.",
         ));
     }
+    #[cfg(not(target_os = "linux"))]
+    checks.push(Check::ok("Graphical session", "desktop OS"));
 
-    // 4) xdg-open — used to open jobs/browser.
+    // 4) Link opener — used to open jobs/browser automatically.
+    #[cfg(target_os = "linux")]
     if crate::platform::which("xdg-open").is_some() {
-        checks.push(Check::ok("Open links (xdg-open)", "available"));
+        checks.push(Check::ok("Open links", "xdg-open available"));
     } else {
         checks.push(Check::warn(
-            "Open links (xdg-open)",
+            "Open links",
             "`xdg-open` not found",
             "Install `xdg-utils` to open jobs and the browser automatically.",
         ));
     }
+    #[cfg(target_os = "macos")]
+    checks.push(Check::ok("Open links", "open available"));
+    #[cfg(target_os = "windows")]
+    checks.push(Check::ok("Open links", "start available"));
 
     // 5) Candidate profile.
     let profile = db.get_profile().unwrap_or_default();

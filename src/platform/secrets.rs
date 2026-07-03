@@ -1,7 +1,8 @@
-//! Secure credential storage (Secret Service) via keyring v3.
+//! Secure credential storage via keyring v3 (OS-native backend).
 //!
-//! Uses the Linux Secret Service backend (gnome-keyring / KWallet). Useful for
-//! storing tokens/secrets that the agent needs, without plaintext on disk.
+//! Backend per OS: Secret Service (gnome-keyring / KWallet) on Linux, Keychain on
+//! macOS, Credential Manager on Windows — selected by Cargo features per target.
+//! Useful for storing tokens/secrets the agent needs, without plaintext on disk.
 
 use anyhow::Result;
 

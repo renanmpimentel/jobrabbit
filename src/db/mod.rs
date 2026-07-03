@@ -38,8 +38,14 @@ impl Db {
         conn.execute_batch(SCHEMA).context("apply schema")?;
         // Light migration for old DBs (ignores if column already exists).
         let _ = conn.execute("ALTER TABLE pending_actions ADD COLUMN field_key TEXT", []);
-        let _ = conn.execute("ALTER TABLE applications ADD COLUMN screenshot_path TEXT", []);
-        let _ = conn.execute("ALTER TABLE applications ADD COLUMN stage TEXT DEFAULT 'applied'", []);
+        let _ = conn.execute(
+            "ALTER TABLE applications ADD COLUMN screenshot_path TEXT",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE applications ADD COLUMN stage TEXT DEFAULT 'applied'",
+            [],
+        );
         let _ = conn.execute("ALTER TABLE applications ADD COLUMN notes TEXT", []);
         let _ = conn.execute(
             "ALTER TABLE cv_reviews ADD COLUMN keywords TEXT NOT NULL DEFAULT ''",
@@ -408,7 +414,12 @@ impl Db {
     }
 
     /// Updates the tracking stage and notes for an application by id.
-    pub fn set_application_tracking(&self, id: i64, stage: &str, notes: Option<&str>) -> Result<()> {
+    pub fn set_application_tracking(
+        &self,
+        id: i64,
+        stage: &str,
+        notes: Option<&str>,
+    ) -> Result<()> {
         self.conn.execute(
             "UPDATE applications SET stage = ?1, notes = ?2 WHERE id = ?3",
             params![stage, notes, id],
@@ -731,7 +742,14 @@ mod tests {
 
         // Toggle + delete the custom one.
         db.set_source_enabled(id, false).unwrap();
-        assert!(!db.list_sources().unwrap().iter().find(|s| s.id == id).unwrap().enabled);
+        assert!(
+            !db.list_sources()
+                .unwrap()
+                .iter()
+                .find(|s| s.id == id)
+                .unwrap()
+                .enabled
+        );
         db.delete_source(id).unwrap();
         assert_eq!(db.list_sources().unwrap().len(), seeded.len());
 
@@ -889,7 +907,11 @@ mod tests {
             85,
             "Eng Manager",
             "rep2",
-            &[Keyword { keyword: "Go".into(), importance: "required".into(), present: false }],
+            &[Keyword {
+                keyword: "Go".into(),
+                importance: "required".into(),
+                present: false,
+            }],
         )
         .unwrap();
         let latest = db.latest_cv_review().unwrap().unwrap();
@@ -982,8 +1004,10 @@ mod tests {
 
         // Dados que DEVEM ser preservados.
         db.save_profile("bg", "cv").unwrap();
-        db.add_variant("Senior Remote", "senior rust remote").unwrap();
-        db.set_answer("english_level", "English level", "advanced").unwrap();
+        db.add_variant("Senior Remote", "senior rust remote")
+            .unwrap();
+        db.set_answer("english_level", "English level", "advanced")
+            .unwrap();
         db.add_cv_review(82, "EM", "report", &[]).unwrap();
 
         // Applied job with screenshot — MUST be preserved.
@@ -994,8 +1018,16 @@ mod tests {
                 ..Default::default()
             })
             .unwrap();
-        let app_id = db.add_application(applied_job, "applied", Some("applied-cv"), Some("applied-cover")).unwrap();
-        db.set_application_screenshot(applied_job, "/path/to/screenshot.png").unwrap();
+        let app_id = db
+            .add_application(
+                applied_job,
+                "applied",
+                Some("applied-cv"),
+                Some("applied-cover"),
+            )
+            .unwrap();
+        db.set_application_screenshot(applied_job, "/path/to/screenshot.png")
+            .unwrap();
 
         // Non-applied job with execution data — MUST be deleted.
         let non_applied_job = db
@@ -1005,8 +1037,15 @@ mod tests {
                 ..Default::default()
             })
             .unwrap();
-        db.add_application(non_applied_job, "ready", Some("draft-cv"), None).unwrap();
-        db.add_pending(Some(non_applied_job), "captcha", "solve", Some("https://acme.jobs/1")).unwrap();
+        db.add_application(non_applied_job, "ready", Some("draft-cv"), None)
+            .unwrap();
+        db.add_pending(
+            Some(non_applied_job),
+            "captcha",
+            "solve",
+            Some("https://acme.jobs/1"),
+        )
+        .unwrap();
         db.start_session(Some("sess-1")).unwrap();
         db.add_feedback("summary", "suggestions").unwrap();
 
@@ -1021,18 +1060,33 @@ mod tests {
         assert_eq!(all_apps.len(), 1, "only applied application should remain");
         assert_eq!(all_apps[0].id, app_id);
         assert_eq!(all_apps[0].status, "applied");
-        assert_eq!(all_apps[0].screenshot_path, Some("/path/to/screenshot.png".to_string()), "screenshot_path must be preserved");
+        assert_eq!(
+            all_apps[0].screenshot_path,
+            Some("/path/to/screenshot.png".to_string()),
+            "screenshot_path must be preserved"
+        );
 
-        assert!(db.list_pending(true).unwrap().is_empty(), "all pending actions deleted");
-        assert!(db.list_sessions().unwrap().is_empty(), "all sessions deleted");
-        assert!(db.list_feedback().unwrap().is_empty(), "all feedback deleted");
+        assert!(
+            db.list_pending(true).unwrap().is_empty(),
+            "all pending actions deleted"
+        );
+        assert!(
+            db.list_sessions().unwrap().is_empty(),
+            "all sessions deleted"
+        );
+        assert!(
+            db.list_feedback().unwrap().is_empty(),
+            "all feedback deleted"
+        );
 
         // Profile and answers preserved.
         assert_eq!(db.get_profile().unwrap().background, "bg");
         assert_eq!(db.list_variants().unwrap().len(), 1);
         let answers = db.get_answers().unwrap();
         assert!(answers.len() > 1);
-        assert!(answers.iter().any(|a| a.key == "english_level" && a.value == "advanced"));
+        assert!(answers
+            .iter()
+            .any(|a| a.key == "english_level" && a.value == "advanced"));
         assert!(db.latest_cv_review().unwrap().is_some());
 
         // Idempotent: running again on a clean db does not fail.
@@ -1068,8 +1122,7 @@ mod tests {
             .unwrap();
 
         // Mark job1 as applied
-        db.add_application(job1, "applied", None, None)
-            .unwrap();
+        db.add_application(job1, "applied", None, None).unwrap();
 
         // Verify list_jobs still returns both jobs
         let all_jobs = db.list_jobs().unwrap();
@@ -1110,8 +1163,7 @@ mod tests {
             .unwrap();
 
         // Mark job1 as applied
-        db.add_application(job1, "applied", None, None)
-            .unwrap();
+        db.add_application(job1, "applied", None, None).unwrap();
 
         // Verify list_jobs_applied returns only job1
         let applied = db.list_jobs_applied().unwrap();
@@ -1135,8 +1187,7 @@ mod tests {
                 ..Default::default()
             })
             .unwrap();
-        db.add_application(job_id, "applied", None, None)
-            .unwrap();
+        db.add_application(job_id, "applied", None, None).unwrap();
 
         // Set screenshot path on the most recent application
         db.set_application_screenshot(job_id, "/tmp/screenshot.png")
@@ -1173,8 +1224,7 @@ mod tests {
         assert_eq!(app.notes.as_deref(), Some("call on friday"));
 
         // Update with notes=None
-        db.set_application_tracking(app_id, "offer", None)
-            .unwrap();
+        db.set_application_tracking(app_id, "offer", None).unwrap();
         let app = db.get_application(app_id).unwrap().unwrap();
         assert_eq!(app.stage.as_deref(), Some("offer"));
         assert_eq!(app.notes, None);
