@@ -39,6 +39,33 @@ jobs:
       - name: Test
         run: cargo test
 
+  cross:
+    name: Cross-compile (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Compiles the macOS/Windows cfg branches that ubuntu never touches
+      # (native notify-rust, keyring apple-native/windows-native, open/start,
+      # PATHEXT which, find_chrome). No apt libs — the Linux-only deps are gated.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check
+        run: cargo check --all-targets
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
   web:
     name: Web UI (typecheck, build)
     runs-on: ubuntu-latest
