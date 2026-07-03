@@ -1,9 +1,9 @@
 [package]
 name = "jobrabbit"
-version = "1.3.0"
+version = "1.4.0"
 edition = "2021"
 rust-version = "1.75"
-description = "Auto-apply to jobs from your terminal — orchestrates the Claude Code CLI + your real Chrome (Linux)."
+description = "Auto-apply to jobs from your terminal — orchestrates the Claude Code CLI + your real Chrome."
 authors = ["Renan Martins Pimentel"]
 license = "MIT"
 readme = "README.md"
@@ -45,15 +45,26 @@ anyhow = "1"
 thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# Linux integrations
-notify-rust = "4"
-keyring = { version = "3", features = ["sync-secret-service"] }
-user-idle = "0.5"
 # Dates
 chrono = { version = "0.4", features = ["serde"] }
 # Résumé import (PDF/DOCX → text)
 pdf-extract = "0.7"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 quick-xml = "0.36"
+
+# ---- Platform integrations (desktop notifications, keyring, idle) ----------
+# Desktop notifications: freedesktop/D-Bus on Linux, native on macOS. Windows is
+# a no-op in code (WinRT toast needs a registered AppUserModelID).
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = "4"
+keyring = { version = "3", features = ["sync-secret-service"] }
+user-idle = "0.5"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+notify-rust = "4"
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 
 [dev-dependencies]
