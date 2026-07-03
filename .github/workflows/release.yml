@@ -22,15 +22,21 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
             artifact: jobrabbit-linux-x86_64
             bin: jobrabbit
           - os: macos-latest
+            target: aarch64-apple-darwin
             artifact: jobrabbit-macos-arm64
             bin: jobrabbit
-          - os: macos-13
+          # Intel macOS is cross-compiled on the Apple Silicon runner — the
+          # scarce macos-13 Intel runners often never leave the queue.
+          - os: macos-latest
+            target: x86_64-apple-darwin
             artifact: jobrabbit-macos-x86_64
             bin: jobrabbit
           - os: windows-latest
+            target: x86_64-pc-windows-msvc
             artifact: jobrabbit-windows-x86_64.exe
             bin: jobrabbit.exe
     defaults:
@@ -63,17 +69,21 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Stage artifact
         run: |
           mkdir -p dist
-          cp "target/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}"
 
       - name: Attach to the GitHub Release
         uses: softprops/action-gh-release@v2
