@@ -1,0 +1,82 @@
+name: Release
+
+# Builds a native binary for each OS and attaches it to the GitHub Release
+# for the pushed tag. The web UI is compiled first and embedded into the
+# binary (rust-embed), so each artifact is a single self-contained executable.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: jobrabbit-linux-x86_64
+            bin: jobrabbit
+          - os: macos-latest
+            artifact: jobrabbit-macos-arm64
+            bin: jobrabbit
+          - os: macos-13
+            artifact: jobrabbit-macos-x86_64
+            bin: jobrabbit
+          - os: windows-latest
+            artifact: jobrabbit-windows-x86_64.exe
+            bin: jobrabbit.exe
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # Linux links against D-Bus/X11 (notifications, idle); other OSes don't.
+      - name: Install Linux build libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libdbus-1-dev libxcb1-dev libxss-dev libx11-dev
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web-ui/package-lock.json
+
+      # cargo embeds web-ui/dist via rust-embed, so build the frontend first.
+      - name: Build frontend (embedded into the binary)
+        run: |
+          cd web-ui
+          npm ci
+          npm run build
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Stage artifact
+        run: |
+          mkdir -p dist
+          cp "target/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}"
+
+      - name: Attach to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.artifact }}
+          fail_on_unmatched_files: true

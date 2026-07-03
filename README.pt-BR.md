@@ -69,34 +69,92 @@ um binário Rust único que roda em Linux, macOS e Windows.
 - **Agente** — o app faz spawn do `claude` num PTY e lê o `--output-format stream-json`. O agente emite um **protocolo NDJSON** (`job` / `application` / `pending` / `answer` / `feedback` / `profile` / `cv_review`) que o app persiste em SQLite. O agente só emite eventos; o DB pertence ao loop da UI.
 - **Integrações de desktop** — multiplataforma, resolvidas por SO: notificações (`notify-rust`) no Linux (D-Bus) e macOS (no Windows é um no-op best-effort), keyring (`keyring` v3 — Secret Service / Keychain / Credential Manager), abertura de links (`xdg-open` / `open` / `start`) e descoberta do Chrome. A detecção de idle (`user-idle`, para auto-execução ao ficar ocioso) é só Linux por enquanto.
 
-## 📋 Pré-requisitos (host / desktop)
+## 📋 O que você precisa para rodar
 
-- **Docker** — para build (o host não precisa de Rust nem Node).
-- Para **rodar de verdade**: o `claude` CLI autenticado, **Google Chrome** + a extensão **Claude in Chrome**, e as libs `libxcb1 libxss1 libdbus-1-3`.
+O jobRabbit roda em **Linux, macOS e Windows**. Em qualquer SO, ele *controla* duas coisas
+que precisam estar no seu desktop:
+
+- **Claude Code CLI** — instalado e autenticado (rode `claude` uma vez para logar).
+- **Google Chrome** + a extensão **Claude in Chrome** — instalados e logados.
+
+Isso é tudo que um binário pronto precisa. Buildar do fonte exige, além disso, Rust e Node
+(veja *Buildar do fonte* abaixo).
+
+## 🚀 Instalação
+
+### Opção A — Baixar um binário pronto (mais fácil, sem toolchain)
+
+Pegue o arquivo do seu SO no [último release](https://github.com/renanmpimentel/jobrabbit/releases/latest):
+
+| SO | Arquivo |
+|----|---------|
+| Linux (x86_64) | `jobrabbit-linux-x86_64` |
+| macOS (Apple Silicon) | `jobrabbit-macos-arm64` |
+| macOS (Intel) | `jobrabbit-macos-x86_64` |
+| Windows (x86_64) | `jobrabbit-windows-x86_64.exe` |
+
+**Linux / macOS** — dê permissão de execução e rode:
 
 ```bash
-sudo apt install libxcb1 libxss1 libdbus-1-3
+chmod +x ./jobrabbit-*        # permite executar
+./jobrabbit-*                 # abre a UI web no navegador
 ```
 
-## 🚀 Início rápido
+**Windows** — dê dois cliques no `.exe`, ou pelo PowerShell:
+
+```powershell
+.\jobrabbit-windows-x86_64.exe
+```
+
+> **Gatekeeper no macOS**: a primeira execução pode ser bloqueada ("desenvolvedor não
+> identificado"). Libere em **Ajustes do Sistema → Privacidade e Segurança**, ou rode
+> `xattr -d com.apple.quarantine ./jobrabbit-macos-*` uma vez.
+
+### Opção B — Buildar do fonte (qualquer SO)
+
+Exige **Rust** (stable) e **Node 20+**.
 
 ```bash
-make            # padrão: testa → builda o bundle web + binário release → abre a UI web
+cd web-ui && npm install && npm run build && cd ..   # builda a UI web (fica embutida)
+cargo build --release                                # compila o binário
+./target/release/jobrabbit                           # rode — jobrabbit.exe no Windows
 ```
 
-…ou passo a passo:
+**Só no Linux**, instale antes as libs de D-Bus/X11 (necessárias para linkar notificações,
+detecção de idle e a TUI):
 
 ```bash
-make web-install   # instala as deps do front-end (web-ui/)
-make test          # roda a suíte de testes Rust
-make release       # gera ./dist/jobrabbit para o seu HOST
-./dist/jobrabbit   # rode no seu desktop (onde estão o claude + Chrome)
+sudo apt install libxcb1 libxss1 libdbus-1-3         # Debian/Ubuntu
 ```
 
-Por padrão o `./dist/jobrabbit` abre a **UI web** no navegador. Prefere a interface de
-terminal clássica? Rode `./dist/jobrabbit --tui`.
+### Opção C — Docker (hosts Linux, sem Rust/Node)
 
-## 🛠️ Build & dev (via Docker)
+Num host Linux dá pra buildar dentro do Docker sem instalar Rust nem Node. O binário gerado
+é um executável **Linux** (use a Opção A ou B para macOS/Windows):
+
+```bash
+make            # testa → builda o bundle web + binário release → abre a UI web
+./dist/jobrabbit
+```
+
+Por padrão o binário abre a **UI web** no navegador. Prefere a interface de terminal
+clássica? Adicione `--tui` a qualquer comando acima.
+
+## 💻 Notas por plataforma
+
+O mesmo binário se adapta a cada SO; alguns opcionais mudam:
+
+| | Linux | macOS | Windows |
+|---|:---:|:---:|:---:|
+| UI web + agente (núcleo) | ✅ | ✅ | ✅ |
+| Notificações de desktop | ✅ (D-Bus) | ✅ | — *(silencioso)* |
+| Auto-execução ao ficar ocioso | ✅ | — | — |
+| Armazenamento seguro de tokens | Secret Service | Keychain | Credential Manager |
+| Pasta de dados & logs | `~/.local/share/jobrabbit/` | `~/Library/Application Support/dev.jobrabbit.jobrabbit/` | `%APPDATA%\jobrabbit\jobrabbit\data\` |
+
+Onde aparece "—", o recurso é simplesmente pulado — todo o resto funciona normalmente.
+
+## 🛠️ Atalhos de dev (Docker, Linux)
 
 ```bash
 make build        # compila (debug)
@@ -122,8 +180,8 @@ Na **UI web**: página **Perfil** → *Importar perfil*. Na **TUI**: aba Perfil 
 Ou via CLI (headless):
 
 ```bash
-./dist/jobrabbit --import-cv ~/curriculo.pdf
-./dist/jobrabbit --import-linkedin https://www.linkedin.com/in/seu-perfil
+jobrabbit --import-cv ~/curriculo.pdf
+jobrabbit --import-linkedin https://www.linkedin.com/in/seu-perfil
 ```
 
 > O background + CV importados **substituem** o perfil atual; as variantes sugeridas são
@@ -147,20 +205,27 @@ As traduções ficam em `web-ui/src/locales/{en,pt-BR}.json` e em `src/locale.rs
 ## ✅ Validação
 
 ```bash
-make test                              # 115 testes (parser, DB, protocolo, prompts, sanitize, TUI)
-./dist/jobrabbit --selftest-agent      # E2E real: roda o claude (prompt seguro, sem
-                                       # browsing) por todo o pipeline e confere o SQLite
-./dist/jobrabbit --snapshot            # preview das telas como texto (sem TTY)
-./dist/jobrabbit --doctor              # diagnóstico do ambiente (deps + config)
+cargo test                     # 115 testes (parser, DB, protocolo, prompts, sanitize, TUI)
+                               #   — ou `make test` para rodar no Docker
+jobrabbit --selftest-agent     # E2E real: roda o claude (prompt seguro, sem browsing)
+                               #   por todo o pipeline e confere o SQLite
+jobrabbit --snapshot           # preview das telas como texto (sem TTY)
+jobrabbit --doctor             # diagnóstico do ambiente (deps + config, por SO)
 ```
+
+> `jobrabbit` aqui é o binário que você instalou — `./jobrabbit-<so>`,
+> `./target/release/jobrabbit`, `./dist/jobrabbit`, ou `jobrabbit.exe` no Windows.
+> **`--doctor` é o jeito mais rápido de checar seu setup em qualquer SO.**
 
 ## 🧰 Solução de problemas
 
-- **"`claude` não encontrado"** — instale o Claude Code e autentique (`claude`). O jobRabbit avisa no startup e ao tentar rodar o agente.
-- **Binário não inicia no host** — instale as libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
+- **"`claude` não encontrado"** — instale o Claude Code e autentique (`claude`). O jobRabbit avisa no startup e ao tentar rodar o agente. Rode `jobrabbit --doctor` para um check completo.
+- **Linux: binário não inicia** — instale as libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
+- **macOS: "desenvolvedor não identificado"** — libere em **Ajustes do Sistema → Privacidade e Segurança**, ou rode `xattr -d com.apple.quarantine ./jobrabbit-macos-*` uma vez.
+- **Windows: sem notificações de desktop** — esperado; os toasts são no-op por enquanto. Os alertas in-app (toast + badge no Pending) funcionam em todos os SOs.
 - **TUI sem cores / quebrada** — use um terminal moderno (256 cores / UTF-8).
-- **Notificações / idle não funcionam** — precisam de D-Bus e sessão gráfica (X11/Wayland). São best-effort; o resto do app funciona sem eles.
-- **Dados / logs** — ficam em `~/.local/share/jobrabbit/` (`jobrabbit.db`, `settings.json`, `jobrabbit.log`). Playbooks customizados: `~/.local/share/jobrabbit/playbooks/<locale>/<slug>.md`.
+- **Notificações / idle não funcionam (Linux)** — precisam de D-Bus e sessão gráfica (X11/Wayland). São best-effort; o resto do app funciona sem eles.
+- **Onde ficam meus dados?** — veja a pasta em [Notas por plataforma](#-notas-por-plataforma) (`jobrabbit.db`, `settings.json`, `jobrabbit.log` e `playbooks/<locale>/<slug>.md`).
 
 ## ⚠️ Uso responsável
 
@@ -171,7 +236,7 @@ mantém um humano no loop por padrão (modo `review`) e nunca burla captchas.
 ## 🤝 Contribuindo
 
 PRs são bem-vindos! Boas primeiras contribuições: novos playbooks de ATS, idiomas adicionais
-e polimento de UI. Mantenha a suíte de testes verde (`make test`) e o código somente em inglês.
+e polimento de UI. Mantenha a suíte de testes verde (`cargo test`, ou `make test` via Docker) e o código somente em inglês.
 
 ## 📄 Licença
 
