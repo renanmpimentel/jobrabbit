@@ -6,181 +6,98 @@
 
 **English** · [Português 🇧🇷](README.pt-BR.md)
 
-[![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
-[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://www.apple.com/macos/)
-[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows/)
-[![Claude](https://img.shields.io/badge/Claude_Code-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.com/claude-code)
-
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-115%20passing-22c55e?style=flat-square)](#-validation)
-[![i18n](https://img.shields.io/badge/i18n-EN%20%C2%B7%20pt--BR-3178C6?style=flat-square)](#-languages--i18n)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-8b5cf6?style=flat-square)](#-contributing)
-[![Made with Claude Code](https://img.shields.io/badge/made%20with-Claude%20Code-D97757?style=flat-square&logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+[![Tests](https://img.shields.io/badge/tests-115%20passing-22c55e?style=flat-square)](#-developers)
+[![Platforms](https://img.shields.io/badge/Linux%20·%20macOS%20·%20Windows-single%20binary-3178C6?style=flat-square)](#-platform-notes)
+[![i18n](https://img.shields.io/badge/i18n-EN%20·%20pt--BR-8b5cf6?style=flat-square)](#-language)
 
 </div>
 
----
-
-jobRabbit orchestrates the **Claude Code CLI** (`claude`) which, through the **Claude in
-Chrome** extension, browses job sites in your already-logged-in Chrome, scores each role's
-*fit* against your profile, generates a tailored CV / cover letter, and tries to apply —
-asking for your help (via an **in-app alert** and a desktop notification) when it hits a
-captcha, a login, or a field it can't fill on its own.
-
-It ships **two front-ends from a single Rust binary**: a polished **local web UI** (the
-default) and a classic **terminal UI** (`--tui`). Inspired by
-[claudia-rh](https://github.com/JohnGabie/claudia-rh) (Windows + Tauri/React); jobRabbit is
-a single Rust binary that runs on Linux, macOS and Windows.
+jobRabbit drives the **Claude Code CLI** through the **Claude in Chrome** extension: it browses
+job sites in your *already-logged-in* Chrome, scores how well each role fits your profile,
+writes a tailored CV and cover letter, and applies for you — pausing to ask when it hits a
+captcha, a login, or a question it can't answer. One **Rust binary** runs on Linux, macOS and
+Windows, with a polished **web UI** (default) or a classic **terminal UI** (`--tui`).
 
 <div align="center">
 
-<img src="dashboard-light.png" width="49%" alt="Dashboard — light theme"> <img src="dashboard-dark.png" width="49%" alt="Dashboard — dark theme">
-<img src="session-light.png" width="49%" alt="Live execution session"> <img src="applications-light.png" width="49%" alt="Applications">
+<img src="dashboard-light.png" width="49%" alt="Dashboard"> <img src="applications-light.png" width="49%" alt="Jobs & applications">
+<img src="ats-light.png" width="49%" alt="ATS résumé checker"> <img src="pending-light.png" width="49%" alt="Human-in-the-loop pending actions">
 
 </div>
 
-## ✨ Features
+## ✨ What it does
 
-| | |
-|---|---|
-| 🧭 **Two front-ends** | Local **web UI** (default, opens in your browser) + classic **TUI** (`--tui`) — same engine, same SQLite. |
-| 🤖 **Real-browser agent** | Spawns `claude` over a PTY, reads `stream-json`, and drives **Claude in Chrome** (your real, logged-in browser — no headless, no Playwright). |
-| 📄 **Profile import** | Build your profile from a **résumé** (PDF / DOCX / TXT) or your **LinkedIn URL** — the agent extracts background, base CV and suggested search variants. |
-| 🎯 **Fit scoring** | Each job is scored 0.0–1.0 against your profile (seniority, stack, work model, requirements). |
-| 🧩 **ATS-aware playbooks** | Detects **12 platforms** — Gupy, LinkedIn, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, Indeed, Solides, Vagas.com.br, InfoJobs, inHire (+ a generic fallback) — with per-platform recipes so the agent knows how to navigate each site. |
-| 🗂️ **Answer bank** | Reusable screening answers (salary expectation, notice period, work model, …) the agent uses to fill forms; learns new ones as it goes. |
-| 🌐 **Job sources** | Pick which sites the agent searches — 12 known platforms seeded (LinkedIn, Gupy, Greenhouse, Lever, Workday, Indeed, …), plus add your own — from Config. |
-| ⚖️ **Apply modes** | `review` (prepare → you approve), `autonomous` (auto-apply on high fit), `hybrid` (auto above a threshold). Plus a global **dry-run** and a master **human-review** gate (on by default) that always stops for your approval before filling or submitting — even in autonomous/hybrid. |
-| 🔔 **Live pending alerts** | When the agent gets blocked (login, captcha, a screening question) you get an instant **in-app toast**, a **banner** on the Execution screen, and a **count badge** on Pending — plus the desktop notification. The Pending screen shows each blocker with the **full job context inline** (fit, company, expandable description). |
-| 📎 **Reliable upload** | Résumés are uploaded as a **PDF rendered from your CV**, so uploads never fail because the site can't take a `.docx`. |
-| 📊 **ATS résumé checker** | Score your CV 0–100 with an actionable report and a **keyword-gap analysis** (present vs. missing, by importance) you can apply to an improved CV in one click. |
-| 🌍 **Bilingual** | **English by default**, **pt-BR** selectable — UI *and* agent language. See [Languages & i18n](#-languages--i18n). |
+- 🤖 **Applies in your real browser.** Drives Claude in Chrome — your logged-in session, no headless, no Playwright.
+- 📄 **Builds your profile for you.** Import from a **résumé** (PDF/DOCX/TXT) or your **LinkedIn URL**.
+- 🎯 **Scores every job 0–1** against your profile (seniority, stack, work model, requirements).
+- 🧩 **Knows 12 ATS platforms** — Gupy, LinkedIn, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, Indeed, Solides, Vagas.com.br, InfoJobs, inHire — with per-site recipes.
+- 🛡️ **Human-in-the-loop by default.** It always stops for your approval before filling or submitting — even in autonomous mode. It never bypasses captchas.
+- 🔔 **Tells you when it's stuck.** Login, captcha or a screening question → in-app alert, Pending badge, and a desktop notification, with the full job context inline.
+- 📊 **ATS résumé checker.** Score your CV 0–100 with a keyword-gap report you can apply in one click.
+- 🌍 **Bilingual** — English by default, pt-BR selectable, for both the UI *and* the agent.
 
-## 🏗️ Architecture
+## 📋 Requirements
 
-- **Front-ends** — a local **web UI** (React + Vite + Tailwind, served by an Axum backend) and a **TUI** (ratatui/crossterm). Both compose the same core.
-- **Agent** — the app spawns `claude` in a PTY and reads `--output-format stream-json`. The agent emits an **NDJSON protocol** (`job` / `application` / `pending` / `answer` / `feedback` / `profile` / `cv_review`) that the app persists to SQLite. The agent only emits events; the DB is owned by the UI loop.
-- **Desktop integrations** — cross-platform, resolved per OS: notifications (`notify-rust`) on Linux (D-Bus) and macOS (Windows is a best-effort no-op), keyring (`keyring` v3 — Secret Service / Keychain / Credential Manager), link opening (`xdg-open` / `open` / `start`) and Chrome discovery. Idle detection (`user-idle`, for auto-run-on-idle) is Linux-only for now.
+jobRabbit *drives* two things that must live on your desktop:
 
-## 📋 What you need to run it
+- **Claude Code CLI** — installed and logged in (run `claude` once). Get it at [claude.com/claude-code](https://claude.com/claude-code). *(Requires a paid Claude plan.)*
+- **Google Chrome** + the **Claude in Chrome** extension — installed and signed in. Get it at [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome).
 
-jobRabbit runs on **Linux, macOS and Windows**. Whatever the OS, it *drives* two things
-that must live on your desktop:
+## 🚀 Quick start
 
-- **Claude Code CLI** — installed and authenticated (run `claude` once to log in). Get it at [claude.com/claude-code](https://claude.com/claude-code). *(Requires a paid Claude plan.)*
-- **Google Chrome** + the **Claude in Chrome** extension — installed and logged in. Get the extension at [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome).
+**1. Download** the file for your computer from the [latest release](https://github.com/renanmpimentel/jobrabbit/releases/latest):
 
-That's everything a prebuilt binary needs. Building from source additionally needs Rust and
-Node (see *Build from source* below).
-
-## 🐣 First time? Start here
-
-Never used a terminal? No problem — follow these five steps.
-
-1. **Install Claude Code** (the engine jobRabbit drives). Follow the guide at
-   [claude.com/claude-code](https://claude.com/claude-code), then open a terminal and run
-   `claude` once to log in. *(A paid Claude plan is required.)*
-2. **Add the Claude in Chrome extension** so Claude can use your browser. Install it from
-   [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome) and sign in with the
-   same account. *(Beta; part of a paid plan.)*
-3. **Download jobRabbit** for your computer from the
-   [latest release](https://github.com/renanmpimentel/jobrabbit/releases/latest):
-   - **Windows** → `jobrabbit-windows-x86_64.exe`
-   - **Mac** with an Apple chip (M1/M2/M3/M4) → `jobrabbit-macos-arm64`
-   - **Mac** with an Intel chip → `jobrabbit-macos-x86_64`
-   - **Linux** → `jobrabbit-linux-x86_64`
-
-   > Not sure which Mac you have?  → **About This Mac**. A line saying *"Apple M…"* means
-   > Apple chip; *"Intel"* means Intel.
-4. **Open it:**
-   - **Windows** — double-click the downloaded file. If Windows shows *"Windows protected
-     your PC"*, click **More info → Run anyway** (the app just isn't code-signed yet — it's
-     not malware).
-   - **Mac** — open the **Terminal** app (press ⌘+Space, type *Terminal*), then paste:
-     ```bash
-     cd ~/Downloads && chmod +x jobrabbit-macos-* && ./jobrabbit-macos-*
-     ```
-     If macOS says *"unidentified developer"*, go to **System Settings → Privacy &
-     Security**, scroll down and click **Open Anyway**, then run the command again.
-   - **Linux** — open a terminal in your Downloads folder and run:
-     ```bash
-     chmod +x jobrabbit-linux-x86_64 && ./jobrabbit-linux-x86_64
-     ```
-5. **You're in** — a tab opens in your browser with the jobRabbit dashboard. That's the app.
-   Leave the small terminal/console window open while you use it; closing it stops jobRabbit.
-
-> Comfortable with a terminal already? Skip to the [install options](#-install) below.
-
-## 🚀 Install
-
-### Option A — Download a prebuilt binary (easiest, no toolchain)
-
-Grab the file for your OS from the [latest release](https://github.com/renanmpimentel/jobrabbit/releases/latest):
-
-| OS | File |
+| Your computer | File |
 |----|------|
-| Linux (x86_64) | `jobrabbit-linux-x86_64` |
-| macOS (Apple Silicon) | `jobrabbit-macos-arm64` |
-| macOS (Intel) | `jobrabbit-macos-x86_64` |
-| Windows (x86_64) | `jobrabbit-windows-x86_64.exe` |
+| **Windows** | `jobrabbit-windows-x86_64.exe` |
+| **Mac** — Apple chip (M1/M2/M3/M4) | `jobrabbit-macos-arm64` |
+| **Mac** — Intel chip | `jobrabbit-macos-x86_64` |
+| **Linux** | `jobrabbit-linux-x86_64` |
 
-**Linux / macOS** — make it executable and run it:
+> Not sure which Mac?  → **About This Mac**. *"Apple M…"* = Apple chip; *"Intel"* = Intel.
 
-```bash
-chmod +x ./jobrabbit-*        # allow execution
-./jobrabbit-*                 # opens the web UI in your browser
-```
+**2. Run it** — a tab opens in your browser with the jobRabbit dashboard. Keep the small
+terminal/console window open while you use it; closing it stops jobRabbit.
 
-**Windows** — double-click the `.exe`, or from PowerShell:
+- **Windows** — double-click the file. If you see *"Windows protected your PC"*, click
+  **More info → Run anyway** (the app just isn't code-signed yet — it's not malware).
+- **Mac** — open **Terminal** (⌘+Space, type *Terminal*) and paste:
+  ```bash
+  cd ~/Downloads && chmod +x jobrabbit-macos-* && ./jobrabbit-macos-*
+  ```
+  If macOS says *"unidentified developer"*, go to **System Settings → Privacy & Security**,
+  click **Open Anyway**, and run the command again.
+- **Linux** — from your Downloads folder:
+  ```bash
+  chmod +x jobrabbit-linux-x86_64 && ./jobrabbit-linux-x86_64
+  ```
 
-```powershell
-.\jobrabbit-windows-x86_64.exe
-```
+> Prefer the classic terminal UI? Add `--tui` to the command.
 
-> **macOS Gatekeeper**: the first launch may be blocked ("unidentified developer").
-> Allow it in **System Settings → Privacy & Security**, or run
-> `xattr -d com.apple.quarantine ./jobrabbit-macos-*` once.
+## 👣 Your first run
 
-### Option B — Build from source (any OS)
+1. **Import your profile** — on the **Profile** page, click *Import profile* and point it at your
+   résumé (PDF/DOCX/TXT) or paste your LinkedIn URL. The agent turns it into a background, a base
+   CV, and suggested search variants.
+2. **Pick where to search** — from **Config**, enable the job sources you want (12 platforms are
+   seeded; add your own too).
+3. **Run a search** — click **Run search**. Leave the apply mode on **review** for your first run:
+   jobRabbit prepares everything and waits for your OK before it applies.
 
-Requires **Rust** (stable) and **Node 20+**.
+> Or import headless from the CLI: `jobrabbit --import-cv ~/resume.pdf` /
+> `jobrabbit --import-linkedin https://www.linkedin.com/in/your-profile`.
 
-```bash
-cd web-ui && npm install && npm run build && cd ..   # build the web UI (gets embedded)
-cargo build --release                                # compile the binary
-./target/release/jobrabbit                           # run it — jobrabbit.exe on Windows
-```
+## 🌍 Language
 
-On **Linux only**, install the D-Bus/X11 libs first (needed to link notifications, idle
-detection and the TUI):
-
-```bash
-sudo apt install libxcb1 libxss1 libdbus-1-3         # Debian/Ubuntu
-```
-
-### Option C — Docker (Linux hosts, no Rust/Node needed)
-
-On a Linux host you can build inside Docker without installing Rust or Node. The produced
-binary is a **Linux** executable (use Option A or B for macOS/Windows):
-
-```bash
-make            # test → build the web bundle + release binary → open the web UI
-./dist/jobrabbit
-```
-
-By default the binary starts the **web UI** in your browser. Prefer the classic terminal UI?
-Add `--tui` to any of the commands above.
+jobRabbit is English-first. Switch to **Português** from the **Config** page (web UI) or the
+**Config** tab (TUI). The choice also sets the **agent's** language, so it searches the right job
+boards and writes your CV and cover letters in that language.
 
 ## 💻 Platform notes
 
-The same binary adapts to each OS; a couple of optional niceties differ:
+The same binary adapts to each OS; a few optional niceties differ:
 
 | | Linux | macOS | Windows |
 |---|:---:|:---:|:---:|
@@ -190,91 +107,88 @@ The same binary adapts to each OS; a couple of optional niceties differ:
 | Secure token storage | Secret Service | Keychain | Credential Manager |
 | Data & logs folder | `~/.local/share/jobrabbit/` | `~/Library/Application Support/dev.jobrabbit.jobrabbit/` | `%APPDATA%\jobrabbit\jobrabbit\data\` |
 
-Where an item shows "—", the feature is simply skipped — everything else works normally.
+Where an item shows "—", it's simply skipped — everything else works normally.
+`jobrabbit --doctor` is the fastest way to check your setup on any OS.
 
-## 🛠️ Dev shortcuts (Docker, Linux)
+## 🧰 Troubleshooting
+
+- **"`claude` not found"** — install Claude Code and log in (`claude`). Run `jobrabbit --doctor` for a full checkup.
+- **Linux: binary won't start** — install the libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
+- **macOS: "unidentified developer"** — allow it in **System Settings → Privacy & Security**, or run `xattr -d com.apple.quarantine ./jobrabbit-macos-*` once.
+- **Windows: no desktop notifications** — expected; the in-app alerts (toast + Pending badge) still work everywhere.
+- **TUI looks broken / no colors** — use a modern terminal (256-color / UTF-8).
+- **Where's my data?** — the folder in [Platform notes](#-platform-notes) (`jobrabbit.db`, `settings.json`, `jobrabbit.log`, `playbooks/<locale>/`).
+
+## ⚠️ Responsible use
+
+Automating job applications may conflict with a site's Terms of Service. **Check the ToS of each
+job site** regarding automation — you are responsible for how you use this tool. jobRabbit keeps a
+human in the loop by default (`review` mode) and never bypasses captchas.
+
+## 🔧 Developers
+
+<details>
+<summary>Build from source, Docker, dev shortcuts, architecture and tests</summary>
+
+### Build from source (any OS)
+
+Requires **Rust** (stable) and **Node 20+**.
 
 ```bash
-make build        # compile (debug)
-make test         # run the tests
-make snapshot     # render the TUI screens as text (no TTY)
+cd web-ui && npm install && npm run build && cd ..   # build the web UI (gets embedded)
+cargo build --release                                # compile the binary
+./target/release/jobrabbit                           # run it — jobrabbit.exe on Windows
+```
+
+On **Linux only**, install the D-Bus/X11 libs first (notifications, idle detection, TUI):
+
+```bash
+sudo apt install libxcb1 libxss1 libdbus-1-3         # Debian/Ubuntu
+```
+
+### Docker (Linux hosts, no Rust/Node needed)
+
+Builds a **Linux** binary inside Docker (use *Build from source* for macOS/Windows):
+
+```bash
+make            # test → build the web bundle + release binary → open the web UI
+./dist/jobrabbit
+```
+
+### Dev shortcuts (Docker)
+
+```bash
+make build        # compile (debug)          make web-dev   # Vite dev server (HMR) on :5173
+make test         # run the tests            make release   # build ./dist/jobrabbit for the HOST
+make snapshot     # render TUI as text       make fmt        # format the code
 make run          # web UI (needs claude + Chrome on the host)
 make tui          # classic TUI (needs a TTY)
-make web-dev      # Vite dev server (HMR) on :5173, proxies /api → backend
-make release      # build ./dist/jobrabbit for the HOST
-make fmt          # format the code
-make shell        # open a shell in the dev container
 ```
 
-## 📥 Import your profile (CV or LinkedIn)
+### Architecture
 
-Instead of typing your profile by hand, import it from a **résumé** (PDF/DOCX/TXT) or your
-**LinkedIn URL** — `claude` structures it into background + base CV + suggested search
-variants in the background.
+- **Front-ends** — a local **web UI** (React + Vite + Tailwind, served by an Axum backend) and a **TUI** (ratatui/crossterm). Both compose the same core.
+- **Agent** — the app spawns `claude` in a PTY and reads `--output-format stream-json`. The agent emits an **NDJSON protocol** (`job` / `application` / `pending` / `answer` / `feedback` / `profile` / `cv_review`) that the app persists to SQLite. The agent only emits events; the DB is owned by the UI loop.
+- **Desktop integrations** — resolved per OS: notifications (`notify-rust`, Linux D-Bus / macOS), keyring (`keyring` v3), link opening (`xdg-open` / `open` / `start`) and Chrome discovery. Idle detection (`user-idle`) is Linux-only.
+- **i18n** — UI strings in `web-ui/src/locales/{en,pt-BR}.json`; agent prompts/playbooks in `src/locale.rs` + `src/playbooks/{en,pt-br}/`.
 
-In the **web UI**: the **Profile** page → *Import profile*. In the **TUI**: Profile tab
-(`2`) → `m` (CV file) or `l` (LinkedIn URL).
-
-Or headless via the CLI:
+### Tests & diagnostics
 
 ```bash
-jobrabbit --import-cv ~/resume.pdf
-jobrabbit --import-linkedin https://www.linkedin.com/in/your-profile
-```
-
-> The imported background + CV **replace** the current profile; suggested variants are
-> **added** (no duplicates). LinkedIn import browses via your logged-in Chrome.
-
-## 🌍 Languages & i18n
-
-jobRabbit is **English-first** and fully internationalized:
-
-- **Web UI** — switch language from the **Config** page (English · Português). The choice is
-  persisted and also updates the **agent** language, so it searches and writes in the same
-  language.
-- **TUI** — the **Config** tab has a **Language** setting (cycle with `space`).
-- **Agent** — prompts and ATS playbooks are locale-aware. With pt-BR selected, the agent
-  searches Brazilian boards and writes CVs/cover letters in Portuguese (the original
-  behavior); with English, it operates in English.
-
-Translations live in `web-ui/src/locales/{en,pt-BR}.json` and `src/locale.rs` +
-`src/playbooks/{en,pt-br}/`. New locales are welcome — see [Contributing](#-contributing).
-
-## ✅ Validation
-
-```bash
-cargo test                     # 115 tests (parser, DB, protocol, prompts, sanitize, TUI)
-                               #   — or `make test` to run them in Docker
-jobrabbit --selftest-agent     # real E2E: runs claude (safe prompt, no browsing)
-                               #   through the whole pipeline and checks SQLite
+cargo test                     # 115 tests (parser, DB, protocol, prompts, sanitize, TUI) — or `make test`
+jobrabbit --selftest-agent     # real E2E: runs claude (safe prompt, no browsing) through the pipeline
 jobrabbit --snapshot           # preview the TUI screens as text (no TTY)
 jobrabbit --doctor             # environment diagnostics (deps + config, per OS)
 ```
 
-> `jobrabbit` here is whichever binary you installed — `./jobrabbit-<os>`,
-> `./target/release/jobrabbit`, `./dist/jobrabbit`, or `jobrabbit.exe` on Windows.
-> **`--doctor` is the fastest way to check your setup on any OS.**
+### Contributing
 
-## 🧰 Troubleshooting
+PRs are welcome! Good first contributions: new ATS playbooks, additional locales, and UI polish.
+Keep the test suite green (`cargo test` / `make test`) and the code English-only.
 
-- **"`claude` not found"** — install Claude Code and authenticate (`claude`). jobRabbit warns at startup and when you try to run the agent. Run `jobrabbit --doctor` for a full checkup.
-- **Linux: binary won't start** — install the libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
-- **macOS: "unidentified developer"** — allow it in **System Settings → Privacy & Security**, or run `xattr -d com.apple.quarantine ./jobrabbit-macos-*` once.
-- **Windows: no desktop notifications** — expected; toasts are a no-op for now. The in-app alerts (toast + Pending badge) still work everywhere.
-- **TUI has no colors / looks broken** — use a modern terminal (256-color / UTF-8).
-- **Notifications / idle don't work (Linux)** — they need D-Bus and a graphical session (X11/Wayland). They're best-effort; the rest of the app works without them.
-- **Where's my data?** — see the folder in [Platform notes](#-platform-notes) (`jobrabbit.db`, `settings.json`, `jobrabbit.log`, and `playbooks/<locale>/<slug>.md`).
+Inspired by [claudia-rh](https://github.com/JohnGabie/claudia-rh) (Windows + Tauri/React).
 
-## ⚠️ Responsible use
-
-Automating job applications may conflict with a site's Terms of Service. **Check the ToS of
-each job site** regarding automation — you are responsible for how you use this tool.
-jobRabbit keeps a human in the loop by default (`review` mode) and never bypasses captchas.
-
-## 🤝 Contributing
-
-PRs are welcome! Good first contributions: new ATS playbooks, additional locales, and UI
-polish. Please keep the test suite green (`cargo test`, or `make test` via Docker) and the code English-only.
+</details>
 
 ## 📄 License
 
