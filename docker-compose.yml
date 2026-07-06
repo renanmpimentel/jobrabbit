@@ -16,6 +16,11 @@ services:
       dockerfile: Dockerfile.dev
     image: jobrabbit-dev
     working_dir: /app
+    # Default docker bridge: avoids creating a per-project network — on machines
+    # with many compose projects, creating one fails with "all predefined
+    # address pools have been fully subnetted". These services never talk to
+    # each other, so no project network is needed.
+    network_mode: bridge
     volumes:
       - .:/app
       - cargo-registry:/usr/local/cargo/registry
@@ -29,6 +34,7 @@ services:
   web:
     image: node:20-bookworm
     working_dir: /app/web-ui
+    network_mode: bridge
     volumes:
       - .:/app
       - web-node-modules:/app/web-ui/node_modules
