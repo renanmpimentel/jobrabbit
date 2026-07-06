@@ -157,7 +157,14 @@ pub async fn serve(db: Db, port: u16) -> Result<()> {
         .and_then(|h| h.parse().ok())
         .unwrap_or_else(|| std::net::IpAddr::from([127, 0, 0, 1]));
     let addr = SocketAddr::new(host, port);
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => anyhow::bail!(
+            "port {port} is already in use — is another jobRabbit instance running?\n\
+             Try a different port: jobrabbit --port <number>"
+        ),
+        Err(e) => return Err(anyhow::anyhow!(e).context(format!("failed to bind {addr}"))),
+    };
     tracing::info!("jobRabbit web at http://{addr}");
     println!("🐇 jobRabbit — open http://{addr} in your browser (Ctrl+C to exit)");
     // Automatically opens the browser. On Linux this needs a graphical session

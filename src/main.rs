@@ -36,6 +36,23 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        print!("{}", usage());
+        return Ok(());
+    }
+    if args.iter().any(|a| a == "--version" || a == "-V") {
+        println!("jobrabbit {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+    // Unknown flags must never fall through and silently start the server.
+    if let Err(e) = validate_args(&args) {
+        eprintln!("error: {e}\n");
+        eprint!("{}", usage());
+        std::process::exit(2);
+    }
+
     // Snapshot mode: renders screens as text and exits (no TTY). Useful for
     // visual preview/debug: `jobrabbit --snapshot`.
     if std::env::args().any(|a| a == "--snapshot") {
@@ -52,6 +69,10 @@ async fn async_main() -> Result<()> {
     if std::env::args().any(|a| a == "--selftest-agent") {
         return selftest_agent().await;
     }
+
+    // Every mode below writes to the real database — hold the single-instance
+    // lock for the rest of the process so two jobRabbits never share it.
+    let _lock = config::acquire_instance_lock()?;
 
     // Limpa os dados de execução (vagas não aplicadas, candidaturas não aplicadas,
     // pendências, sessões e feedback) e sai. Preserva perfil, variantes de busca,
@@ -220,6 +241,73 @@ fn flag_value(flag: &str) -> Option<String> {
     args.iter()
         .position(|a| a == flag)
         .and_then(|i| args.get(i + 1).cloned())
+}
+
+/// Flags that may be followed by a value (`--flag value`).
+const FLAGS_WITH_VALUE: &[&str] = &["--port", "--import-cv", "--import-linkedin"];
+
+/// Every flag the binary understands (long and short forms).
+const KNOWN_FLAGS: &[&str] = &[
+    "--help",
+    "-h",
+    "--version",
+    "-V",
+    "--web",
+    "--tui",
+    "--port",
+    "--doctor",
+    "--snapshot",
+    "--selftest-agent",
+    "--reset-runs",
+    "--import-cv",
+    "--import-linkedin",
+];
+
+/// Rejects unknown `-`/`--` tokens so a typo never falls through to the web
+/// server. Values of `--port`/`--import-*` are skipped unless they look like
+/// a flag themselves (paths starting with `-` are not supported).
+fn validate_args(args: &[String]) -> Result<(), String> {
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        if arg.starts_with('-') {
+            if !KNOWN_FLAGS.contains(&arg) {
+                return Err(format!("unknown flag: {arg}"));
+            }
+            if FLAGS_WITH_VALUE.contains(&arg) {
+                if let Some(next) = args.get(i + 1) {
+                    if !next.starts_with('-') {
+                        i += 1;
+                    }
+                }
+            }
+        }
+        i += 1;
+    }
+    Ok(())
+}
+
+fn usage() -> String {
+    format!(
+        "jobRabbit {} — auto-apply to jobs from your terminal\n\
+         \n\
+         USAGE:\n\
+         \x20   jobrabbit [OPTIONS]\n\
+         \n\
+         OPTIONS:\n\
+         \x20   --web                    Web UI on http://127.0.0.1:8787 (default mode)\n\
+         \x20   --tui                    Classic terminal UI instead of the web UI\n\
+         \x20   --port <NUMBER>          Web UI port (default: 8787)\n\
+         \x20   --doctor                 Check dependencies and configuration, then exit\n\
+         \x20   --snapshot               Render the TUI screens as text, then exit\n\
+         \x20   --selftest-agent         Run an end-to-end agent self-test, then exit\n\
+         \x20   --reset-runs             Clear execution data (keeps applied jobs), then exit\n\
+         \x20   --import-cv [PATH]       Import your profile from a résumé, then exit\n\
+         \x20   --import-linkedin [URL]  Import your profile from LinkedIn, then exit\n\
+         \x20   -h, --help               Print this help\n\
+         \x20   -V, --version            Print the version\n",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 enum ImportSource {
@@ -407,4 +495,63 @@ fn init_tracing() {
         }
     }
     let _ = fmt().with_writer(std::io::stderr).try_init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn validate_args_accepts_all_known_flags() {
+        for flag in KNOWN_FLAGS {
+            assert!(validate_args(&args(&[flag])).is_ok(), "rejected {flag}");
+        }
+    }
+
+    #[test]
+    fn validate_args_rejects_unknown_flag() {
+        let err = validate_args(&args(&["--nope"])).unwrap_err();
+        assert!(err.contains("--nope"));
+        assert!(validate_args(&args(&["-x"])).is_err());
+    }
+
+    #[test]
+    fn validate_args_skips_port_value() {
+        assert!(validate_args(&args(&["--port", "9999"])).is_ok());
+    }
+
+    #[test]
+    fn validate_args_skips_import_values() {
+        assert!(validate_args(&args(&["--import-cv", "/tmp/cv.pdf"])).is_ok());
+        assert!(validate_args(&args(&["--import-linkedin", "https://l.in/x"])).is_ok());
+    }
+
+    #[test]
+    fn validate_args_still_checks_flag_after_valueless_flag() {
+        // `--import-cv` without a value followed by a typo must still fail.
+        assert!(validate_args(&args(&["--import-cv", "--nope"])).is_err());
+        // ...and followed by a known flag must pass.
+        assert!(validate_args(&args(&["--import-cv", "--tui"])).is_ok());
+    }
+
+    #[test]
+    fn validate_args_mixed_flags_and_values() {
+        assert!(validate_args(&args(&["--tui", "--port", "8888", "--doctor"])).is_ok());
+        assert!(validate_args(&args(&["--port", "8888", "--bogus"])).is_err());
+    }
+
+    #[test]
+    fn usage_contains_version_and_all_flags() {
+        let u = usage();
+        assert!(u.contains(env!("CARGO_PKG_VERSION")));
+        for flag in KNOWN_FLAGS {
+            if flag.starts_with("--") {
+                assert!(u.contains(flag), "usage is missing {flag}");
+            }
+        }
+    }
 }

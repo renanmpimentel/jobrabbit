@@ -40,6 +40,8 @@ serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 # XDG paths / config
 directories = "5"
+# Single-instance lock (OS advisory file lock, cross-platform)
+fs4 = "0.13"
 # Errors / logs
 anyhow = "1"
 thiserror = "1"

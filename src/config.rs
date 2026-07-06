@@ -23,6 +23,34 @@ pub fn settings_path() -> Result<PathBuf> {
     Ok(data_dir()?.join("settings.json"))
 }
 
+/// Takes the single-instance lock (`jobrabbit.lock` in the data dir). The
+/// returned handle must be kept alive for the whole process — the OS advisory
+/// lock is released when it drops, so a crash never leaves a stale lock.
+pub fn acquire_instance_lock() -> Result<std::fs::File> {
+    use fs4::fs_std::FileExt;
+
+    let dir = data_dir()?;
+    std::fs::create_dir_all(&dir).context("failed to create the data directory")?;
+    let path = dir.join("jobrabbit.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(false)
+        .open(&path)
+        .with_context(|| format!("failed to open the lock file at {}", path.display()))?;
+    if !file
+        .try_lock_exclusive()
+        .with_context(|| format!("failed to lock {}", path.display()))?
+    {
+        anyhow::bail!(
+            "another jobRabbit instance is already running (data dir: {}).\n\
+             Close it first — two instances cannot share the same database.",
+            dir.display()
+        );
+    }
+    Ok(file)
+}
+
 /// Browser automation backend used by the agent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
