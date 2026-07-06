@@ -18,6 +18,7 @@ import { AgentProvider, useAgent } from "./events";
 import { NavProvider, useNav } from "./nav";
 import { isRunning, post, useInvalidate, usePending, useSettings, type AgentStatus } from "./hooks";
 import { AppShell, Button, SidebarBrand, StatusPill, cn } from "./ui";
+import Logo from "./Logo";
 import { useToast } from "./toast";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -103,7 +104,7 @@ function Sidebar({ active, onPick }: { active: string; onPick: (id: string) => v
   return (
     <>
       <SidebarBrand onClose={() => onPick(active)}>
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-2 text-sm">🐇</span>
+        <Logo className="h-7 w-7 shrink-0" />
         <span className="text-base font-semibold tracking-tight text-fg">jobRabbit</span>
       </SidebarBrand>
       <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4 scroll-thin">

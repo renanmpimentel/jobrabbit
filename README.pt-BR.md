@@ -1,6 +1,9 @@
 <div align="center">
 
-# jobRabbit 🐇
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.png">
+  <img src="assets/brand/banner.png" alt="jobRabbit" width="380">
+</picture>
 
 **Candidate-se a vagas pelo terminal — movido a Claude Code + seu Chrome de verdade.**
 

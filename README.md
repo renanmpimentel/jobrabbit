@@ -1,6 +1,9 @@
 <div align="center">
 
-# jobRabbit 🐇
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.png">
+  <img src="assets/brand/banner.png" alt="jobRabbit" width="380">
+</picture>
 
 **Auto-apply to jobs from your terminal — driven by Claude Code + your real Chrome.**
 
