@@ -26,8 +26,8 @@ roda em Linux, macOS e Windows, com uma **interface web** caprichada (padrão) o
 
 <div align="center">
 
-<img src="dashboard-light-ptbr.png" width="49%" alt="Dashboard"> <img src="applications-light-ptbr.png" width="49%" alt="Vagas e candidaturas">
-<img src="ats-light-ptbr.png" width="49%" alt="Avaliação ATS do currículo"> <img src="pending-light-ptbr.png" width="49%" alt="Pendências com humano no comando">
+<img src="dashboard-light.png" width="49%" alt="Dashboard"> <img src="applications-light.png" width="49%" alt="Vagas e candidaturas">
+<img src="ats-light.png" width="49%" alt="Avaliação ATS do currículo"> <img src="pending-light.png" width="49%" alt="Pendências com humano no comando">
 
 </div>
 
