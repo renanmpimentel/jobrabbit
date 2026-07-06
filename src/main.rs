@@ -117,6 +117,18 @@ async fn async_main() -> Result<()> {
         return web::serve(db, port).await;
     }
 
+    // Raw mode fails with a cryptic OS error when stdout isn't a terminal
+    // (pipes, CI, `nohup`); fail early with something actionable instead.
+    {
+        use crossterm::tty::IsTty;
+        if !std::io::stdout().is_tty() {
+            anyhow::bail!(
+                "the TUI needs an interactive terminal (TTY). Run it from a real terminal, \
+                 or use the web UI (default, no --tui) or `--snapshot` to preview the screens as text."
+            );
+        }
+    }
+
     let db = Db::open(config::db_path()?)?;
     tracing::info!("jobRabbit starting (TUI)");
 
@@ -214,8 +226,13 @@ fn doctor_cli() -> Result<()> {
     let db = Db::open(config::db_path()?)?;
     let settings = config::Settings::load();
     let checks = core::doctor::run(&db, &settings);
+    let pt = settings.locale == locale::Locale::PtBr;
 
-    println!("🐇 jobRabbit — environment diagnostic\n");
+    if pt {
+        println!("🐇 jobRabbit — diagnóstico do ambiente\n");
+    } else {
+        println!("🐇 jobRabbit — environment diagnostic\n");
+    }
     for c in &checks {
         let icon = match c.status {
             core::doctor::Status::Ok => "✔",
@@ -228,7 +245,11 @@ fn doctor_cli() -> Result<()> {
         }
     }
     let (ok, warn, fail) = core::doctor::summary(&checks);
-    println!("\nSummary: {ok} ok · {warn} warning(s) · {fail} error(s).");
+    if pt {
+        println!("\nResumo: {ok} ok · {warn} aviso(s) · {fail} erro(s).");
+    } else {
+        println!("\nSummary: {ok} ok · {warn} warning(s) · {fail} error(s).");
+    }
     if fail > 0 {
         std::process::exit(1);
     }

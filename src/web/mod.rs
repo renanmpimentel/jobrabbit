@@ -236,6 +236,16 @@ fn router(state: AppState) -> Router {
 /// `index.html` (SPA) when the path doesn't exist.
 async fn static_handler(uri: Uri) -> Response {
     let path = uri.path().trim_start_matches('/');
+    // Unknown /api/* routes answer with a JSON 404 instead of the SPA shell,
+    // so API consumers see the miss instead of an HTML page with status 200.
+    if path == "api" || path.starts_with("api/") {
+        return (
+            StatusCode::NOT_FOUND,
+            [(header::CONTENT_TYPE, "application/json")],
+            format!(r#"{{"error":"unknown API route: /{path}"}}"#),
+        )
+            .into_response();
+    }
     let path = if path.is_empty() { "index.html" } else { path };
     match Assets::get(path) {
         Some(content) => {
@@ -931,6 +941,7 @@ async fn sse_events(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::db::models::answer_label;
 
     #[test]
@@ -941,5 +952,15 @@ mod tests {
             Some("Salary expectation")
         );
         assert_eq!(answer_label("not_a_real_key"), None);
+    }
+
+    #[tokio::test]
+    async fn unknown_api_route_is_json_404_not_spa_html() {
+        let resp = static_handler(Uri::from_static("/api/does-not-exist")).await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            resp.headers().get(header::CONTENT_TYPE).unwrap(),
+            "application/json"
+        );
     }
 }

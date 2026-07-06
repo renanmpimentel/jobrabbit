@@ -99,19 +99,36 @@ fn find_chrome() -> Option<String> {
 }
 
 /// Runs all environment/configuration checks.
+///
+/// Names, details and hints follow `settings.locale`, so the CLI (`--doctor`)
+/// and the web UI (health banner + Health page) speak the user's language.
 pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
     let mut checks = Vec::new();
+    let pt = settings.locale == crate::locale::Locale::PtBr;
+    // English by default; pt-BR when the locale asks for it.
+    let tr = |en: &'static str, ptbr: &'static str| if pt { ptbr } else { en };
 
     // 1) Claude Code CLI — mandatory.
     match crate::platform::which(&settings.claude_bin) {
         Some(p) => checks.push(Check::ok(
             "Claude Code CLI",
-            format!("`{}` found in {}", settings.claude_bin, p.display()),
+            if pt {
+                format!("`{}` encontrado em {}", settings.claude_bin, p.display())
+            } else {
+                format!("`{}` found in {}", settings.claude_bin, p.display())
+            },
         )),
         None => checks.push(Check::fail(
             "Claude Code CLI",
-            format!("`{}` is not in PATH", settings.claude_bin),
-            "Install Claude Code and authenticate (`claude`); or adjust the path in the Config tab.",
+            if pt {
+                format!("`{}` não está no PATH", settings.claude_bin)
+            } else {
+                format!("`{}` is not in PATH", settings.claude_bin)
+            },
+            tr(
+                "Install Claude Code and authenticate (`claude`); or adjust the path in the Config tab.",
+                "Instale o Claude Code e autentique (`claude`); ou ajuste o caminho na aba Config.",
+            ),
         )),
     }
 
@@ -121,62 +138,103 @@ pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
         crate::config::BrowserBackend::Chrome => match find_chrome() {
             Some(p) => checks.push(Check::ok(
                 "Google Chrome",
-                format!("found in {p} — confirm that the Claude in Chrome extension is installed and logged in"),
+                if pt {
+                    format!("encontrado em {p} — confirme que a extensão Claude in Chrome está instalada e logada")
+                } else {
+                    format!("found in {p} — confirm that the Claude in Chrome extension is installed and logged in")
+                },
             )),
             None => checks.push(Check::warn(
                 "Google Chrome",
-                "browser not found",
-                "Install Google Chrome and the Claude in Chrome extension (automation depends on logged-in Chrome), or switch the browser backend to Playwright in the Config tab.",
+                tr("browser not found", "navegador não encontrado"),
+                tr(
+                    "Install Google Chrome and the Claude in Chrome extension (automation depends on logged-in Chrome), or switch the browser backend to Playwright in the Config tab.",
+                    "Instale o Google Chrome e a extensão Claude in Chrome (a automação depende do Chrome logado), ou troque o backend de navegador para Playwright na aba Config.",
+                ),
             )),
         },
         crate::config::BrowserBackend::Playwright => checks.push(Check::ok(
-            "Browser backend",
-            "Playwright MCP — Chrome and the Claude in Chrome extension are not required; log in once in the Playwright browser (profile persists)",
+            tr("Browser backend", "Backend de navegador"),
+            tr(
+                "Playwright MCP — Chrome and the Claude in Chrome extension are not required; log in once in the Playwright browser (profile persists)",
+                "Playwright MCP — Chrome e a extensão Claude in Chrome não são necessários; faça login uma vez no navegador do Playwright (o perfil persiste)",
+            ),
         )),
     }
 
     // 3) Graphical session — Chrome and automatic browser opening depend on this.
     #[cfg(target_os = "linux")]
     if std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some() {
-        checks.push(Check::ok("Graphical session", "DISPLAY/Wayland detected"));
+        checks.push(Check::ok(
+            tr("Graphical session", "Sessão gráfica"),
+            tr("DISPLAY/Wayland detected", "DISPLAY/Wayland detectado"),
+        ));
     } else {
         checks.push(Check::warn(
-            "Graphical session",
-            "no DISPLAY/WAYLAND_DISPLAY",
-            "Run on your desktop (with graphical environment) for the UI to open and Chrome to work.",
+            tr("Graphical session", "Sessão gráfica"),
+            tr("no DISPLAY/WAYLAND_DISPLAY", "sem DISPLAY/WAYLAND_DISPLAY"),
+            tr(
+                "Run on your desktop (with graphical environment) for the UI to open and Chrome to work.",
+                "Rode no seu desktop (com ambiente gráfico) para a UI abrir e o Chrome funcionar.",
+            ),
         ));
     }
     #[cfg(not(target_os = "linux"))]
-    checks.push(Check::ok("Graphical session", "desktop OS"));
+    checks.push(Check::ok(
+        tr("Graphical session", "Sessão gráfica"),
+        tr("desktop OS", "SO desktop"),
+    ));
 
     // 4) Link opener — used to open jobs/browser automatically.
     #[cfg(target_os = "linux")]
     if crate::platform::which("xdg-open").is_some() {
-        checks.push(Check::ok("Open links", "xdg-open available"));
+        checks.push(Check::ok(
+            tr("Open links", "Abrir links"),
+            tr("xdg-open available", "xdg-open disponível"),
+        ));
     } else {
         checks.push(Check::warn(
-            "Open links",
-            "`xdg-open` not found",
-            "Install `xdg-utils` to open jobs and the browser automatically.",
+            tr("Open links", "Abrir links"),
+            tr("`xdg-open` not found", "`xdg-open` não encontrado"),
+            tr(
+                "Install `xdg-utils` to open jobs and the browser automatically.",
+                "Instale `xdg-utils` para abrir vagas e o navegador automaticamente.",
+            ),
         ));
     }
     #[cfg(target_os = "macos")]
-    checks.push(Check::ok("Open links", "open available"));
+    checks.push(Check::ok(
+        tr("Open links", "Abrir links"),
+        tr("open available", "open disponível"),
+    ));
     #[cfg(target_os = "windows")]
-    checks.push(Check::ok("Open links", "start available"));
+    checks.push(Check::ok(
+        tr("Open links", "Abrir links"),
+        tr("start available", "start disponível"),
+    ));
 
     // 5) Candidate profile.
     let profile = db.get_profile().unwrap_or_default();
     if profile.background.trim().is_empty() && profile.cv_base.trim().is_empty() {
         checks.push(Check::warn(
-            "Candidate profile",
-            "background and base CV empty",
-            "Fill in the Profile or import your CV/LinkedIn (Profile tab).",
+            tr("Candidate profile", "Perfil do candidato"),
+            tr(
+                "background and base CV empty",
+                "background e CV base vazios",
+            ),
+            tr(
+                "Fill in the Profile or import your CV/LinkedIn (Profile tab).",
+                "Preencha o Perfil ou importe seu CV/LinkedIn (aba Perfil).",
+            ),
         ));
     } else {
         checks.push(Check::ok(
-            "Candidate profile",
-            format!("{} chars of base CV", profile.cv_base.len()),
+            tr("Candidate profile", "Perfil do candidato"),
+            if pt {
+                format!("{} caracteres de CV base", profile.cv_base.len())
+            } else {
+                format!("{} chars of base CV", profile.cv_base.len())
+            },
         ));
     }
 
@@ -189,41 +247,75 @@ pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
         .count();
     if ativas == 0 {
         checks.push(Check::warn(
-            "Search variants",
-            "no active variant",
-            "Add/enable at least one search variant in the Profile tab.",
+            tr("Search variants", "Variantes de busca"),
+            tr("no active variant", "nenhuma variante ativa"),
+            tr(
+                "Add/enable at least one search variant in the Profile tab.",
+                "Adicione/ative pelo menos uma variante de busca na aba Perfil.",
+            ),
         ));
     } else {
-        checks.push(Check::ok("Search variants", format!("{ativas} active")));
+        checks.push(Check::ok(
+            tr("Search variants", "Variantes de busca"),
+            if pt {
+                format!("{ativas} ativa(s)")
+            } else {
+                format!("{ativas} active")
+            },
+        ));
     }
 
     // 7) CV file for upload (optional).
     let cv_path = settings.cv_file_path.trim();
     if cv_path.is_empty() {
         checks.push(Check::ok(
-            "CV file (upload)",
-            "not set (optional — only needed when the site requires upload)",
+            tr("CV file (upload)", "Arquivo de CV (upload)"),
+            tr(
+                "not set (optional — only needed when the site requires upload)",
+                "não configurado (opcional — só necessário quando o site exige upload)",
+            ),
         ));
     } else if std::path::Path::new(cv_path).is_file() {
-        checks.push(Check::ok("CV file (upload)", cv_path.to_string()));
+        checks.push(Check::ok(
+            tr("CV file (upload)", "Arquivo de CV (upload)"),
+            cv_path.to_string(),
+        ));
     } else {
         checks.push(Check::warn(
-            "CV file (upload)",
-            format!("the configured path does not exist: {cv_path}"),
-            "Point to a valid PDF/DOCX in the Config tab (or import a CV from file).",
+            tr("CV file (upload)", "Arquivo de CV (upload)"),
+            if pt {
+                format!("o caminho configurado não existe: {cv_path}")
+            } else {
+                format!("the configured path does not exist: {cv_path}")
+            },
+            tr(
+                "Point to a valid PDF/DOCX in the Config tab (or import a CV from file).",
+                "Aponte para um PDF/DOCX válido na aba Config (ou importe um CV de arquivo).",
+            ),
         ));
     }
 
     // 8) Database / data directory.
     match crate::config::data_dir() {
         Ok(dir) => checks.push(Check::ok(
-            "Database",
-            format!("accessible in {}", dir.display()),
+            tr("Database", "Banco de dados"),
+            if pt {
+                format!("acessível em {}", dir.display())
+            } else {
+                format!("accessible in {}", dir.display())
+            },
         )),
         Err(e) => checks.push(Check::fail(
-            "Database",
-            format!("could not resolve data directory: {e}"),
-            "Check permissions of XDG data directory (~/.local/share/jobrabbit).",
+            tr("Database", "Banco de dados"),
+            if pt {
+                format!("não foi possível resolver o diretório de dados: {e}")
+            } else {
+                format!("could not resolve data directory: {e}")
+            },
+            tr(
+                "Check permissions of XDG data directory (~/.local/share/jobrabbit).",
+                "Verifique as permissões do diretório de dados XDG (~/.local/share/jobrabbit).",
+            ),
         )),
     }
 
@@ -267,5 +359,27 @@ mod tests {
         assert!(checks
             .iter()
             .any(|c| c.name == "Search variants" && c.status == Status::Warn));
+    }
+
+    #[test]
+    fn checks_follow_the_ptbr_locale() {
+        let db = Db::open_in_memory().unwrap();
+        let settings = Settings {
+            locale: crate::locale::Locale::PtBr,
+            ..Settings::default()
+        };
+        let checks = run(&db, &settings);
+        let nomes: Vec<&str> = checks.iter().map(|c| c.name.as_str()).collect();
+        // Localized names (product names like "Claude Code CLI" stay as-is).
+        assert!(nomes.contains(&"Perfil do candidato"));
+        assert!(nomes.contains(&"Variantes de busca"));
+        assert!(nomes.contains(&"Banco de dados"));
+        assert!(!nomes.contains(&"Candidate profile"));
+        // Hints localized too.
+        let variantes = checks
+            .iter()
+            .find(|c| c.name == "Variantes de busca")
+            .unwrap();
+        assert!(variantes.hint.as_deref().unwrap().contains("variante"));
     }
 }

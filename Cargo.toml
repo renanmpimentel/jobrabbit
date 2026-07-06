@@ -70,3 +70,7 @@ keyring = { version = "3", features = ["apple-native"] }
 keyring = { version = "3", features = ["windows-native"] }
 
 [dev-dependencies]
+
+# Release binaries ship without debug symbols (~17.8 MB → smaller downloads).
+[profile.release]
+strip = true
