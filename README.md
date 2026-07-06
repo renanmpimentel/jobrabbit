@@ -5,22 +5,23 @@
   <img src="assets/brand/banner.png" alt="jobRabbit" width="380">
 </picture>
 
-**Auto-apply to jobs from your terminal — driven by Claude Code + your real Chrome.**
+**Auto-apply to jobs from your terminal — driven by Claude Code + your browser.**
 
 **English** · [Português 🇧🇷](README.pt-BR.md)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-115%20passing-22c55e?style=flat-square)](#-developers)
+[![Tests](https://img.shields.io/badge/tests-120%20passing-22c55e?style=flat-square)](#-developers)
 [![Platforms](https://img.shields.io/badge/Linux%20·%20macOS%20·%20Windows-single%20binary-3178C6?style=flat-square)](#-platform-notes)
 [![i18n](https://img.shields.io/badge/i18n-EN%20·%20pt--BR-8b5cf6?style=flat-square)](#-language)
 
 </div>
 
-jobRabbit drives the **Claude Code CLI** through the **Claude in Chrome** extension: it browses
-job sites in your *already-logged-in* Chrome, scores how well each role fits your profile,
-writes a tailored CV and cover letter, and applies for you — pausing to ask when it hits a
-captcha, a login, or a question it can't answer. One **Rust binary** runs on Linux, macOS and
+jobRabbit drives the **Claude Code CLI** with a browser: it browses job sites in your
+*already-logged-in* session, scores how well each role fits your profile, writes a tailored CV
+and cover letter, and applies for you — pausing to ask when it hits a captcha, a login, or a
+question it can't answer. Pick the browser backend that suits you: the **Claude in Chrome**
+extension (your real Chrome) or **Playwright** (no extension needed). One **Rust binary** runs on Linux, macOS and
 Windows, with a polished **web UI** (default) or a classic **terminal UI** (`--tui`).
 
 <div align="center">
@@ -32,7 +33,7 @@ Windows, with a polished **web UI** (default) or a classic **terminal UI** (`--t
 
 ## ✨ What it does
 
-- 🤖 **Applies in your real browser.** Drives Claude in Chrome — your logged-in session, no headless, no Playwright.
+- 🤖 **Applies in a logged-in browser.** Default: Claude in Chrome — your real Chrome session. Or switch to the Playwright backend: no extension, log in once and the profile persists.
 - 📄 **Builds your profile for you.** Import from a **résumé** (PDF/DOCX/TXT) or your **LinkedIn URL**.
 - 🎯 **Scores every job 0–1** against your profile (seniority, stack, work model, requirements).
 - 🧩 **Knows 12 ATS platforms** — Gupy, LinkedIn, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, Indeed, Solides, Vagas.com.br, InfoJobs, inHire — with per-site recipes.
@@ -46,7 +47,15 @@ Windows, with a polished **web UI** (default) or a classic **terminal UI** (`--t
 jobRabbit *drives* two things that must live on your desktop:
 
 - **Claude Code CLI** — installed and logged in (run `claude` once). Get it at [claude.com/claude-code](https://claude.com/claude-code). *(Requires a paid Claude plan.)*
-- **Google Chrome** + the **Claude in Chrome** extension — installed and signed in. Get it at [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome).
+- **A browser backend** (pick one in **Config → Browser**):
+  - **Claude in Chrome** *(default)* — Google Chrome + the extension, installed and signed in.
+    Get it at [claude.com/claude-for-chrome](https://claude.com/claude-for-chrome). Uses your
+    real, already-logged-in Chrome.
+  - **Playwright** *(no extension)* — uses Claude Code's Playwright plugin with a persistent
+    profile. On the first run, sign in to your job sites when the Playwright browser asks
+    (jobRabbit pauses with a *login* pending); after that the session is remembered.
+
+See [Browser backends](#-browser-backends) for a side-by-side comparison.
 
 ## 🚀 Quick start
 
@@ -91,6 +100,31 @@ terminal/console window open while you use it; closing it stops jobRabbit.
 
 > Or import headless from the CLI: `jobrabbit --import-cv ~/resume.pdf` /
 > `jobrabbit --import-linkedin https://www.linkedin.com/in/your-profile`.
+
+## 🌐 Browser backends
+
+jobRabbit needs a browser it can drive. Two backends are supported — switch anytime in
+**Config → Browser** (web UI) or the **Config** tab (TUI); the change applies to the next run.
+
+| | **Claude in Chrome** *(default)* | **Playwright** |
+|---|---|---|
+| Extension required | Yes — [Claude in Chrome](https://claude.com/claude-for-chrome) | No |
+| Browser used | Your real Google Chrome | Playwright's own browser (Claude Code plugin) |
+| Logins | Reuses your existing Chrome sessions | Log in once; the persistent profile remembers it |
+| Bot detection | Lower risk (real browser, real sessions) | Higher on strict sites (LinkedIn, Indeed) |
+| Best for | Day-to-day use — recommended | Machines where you can't (or don't want to) install the extension |
+
+**Claude in Chrome (default).** jobRabbit launches `claude --chrome`, which drives your real,
+already-logged-in Chrome. Nothing else to set up: if you can browse LinkedIn in Chrome, the agent
+can too.
+
+**Playwright (no extension).** jobRabbit lets the agent use Claude Code's Playwright plugin
+instead. The Playwright browser keeps a *persistent profile*: the first time a site asks for
+login, jobRabbit pauses with a **login** pending — sign in once in the Playwright window, resume,
+and future runs stay logged in. Captchas and logins are never bypassed, same as the default mode.
+
+> Existing `settings.json` files keep working: the legacy `use_chrome` flag is migrated
+> automatically (`true` → `chrome`, `false` → `playwright`).
 
 ## 🌍 Language
 
@@ -164,7 +198,7 @@ make            # test → build the web bundle + release binary → open the we
 make build        # compile (debug)          make web-dev   # Vite dev server (HMR) on :5173
 make test         # run the tests            make release   # build ./dist/jobrabbit for the HOST
 make snapshot     # render TUI as text       make fmt        # format the code
-make run          # web UI (needs claude + Chrome on the host)
+make run          # web UI (needs claude + a browser backend on the host)
 make tui          # classic TUI (needs a TTY)
 ```
 
@@ -178,7 +212,7 @@ make tui          # classic TUI (needs a TTY)
 ### Tests & diagnostics
 
 ```bash
-cargo test                     # 115 tests (parser, DB, protocol, prompts, sanitize, TUI) — or `make test`
+cargo test                     # 120 tests (parser, DB, protocol, prompts, sanitize, TUI) — or `make test`
 jobrabbit --selftest-agent     # real E2E: runs claude (safe prompt, no browsing) through the pipeline
 jobrabbit --snapshot           # preview the TUI screens as text (no TTY)
 jobrabbit --doctor             # environment diagnostics (deps + config, per OS)

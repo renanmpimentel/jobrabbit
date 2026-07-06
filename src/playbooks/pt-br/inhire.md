@@ -3,7 +3,7 @@
 Formulários inHire (ex.: empresa.inhire.app) pedem dados de identidade logo no
 início, antes das perguntas de triagem.
 
-1. Abra a página da vaga no Chrome logado.
+1. Abra a página da vaga no navegador logado.
 2. Preencha primeiro os campos de identidade pelo BANCO DE RESPOSTAS: nome
    completo, CPF, celular (com DDD), data de nascimento, cidade/estado. São
    dados do próprio usuário — preencha quando presentes.

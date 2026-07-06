@@ -58,7 +58,7 @@ pub enum SettingKind {
     Locale,
     HybridThreshold,
     DryRun,
-    UseChrome,
+    BrowserBackend,
     BypassPermissions,
     IdleThreshold,
     AutoRunIdle,
@@ -74,7 +74,7 @@ pub const SETTING_KINDS: [SettingKind; 13] = [
     SettingKind::Locale,
     SettingKind::HybridThreshold,
     SettingKind::DryRun,
-    SettingKind::UseChrome,
+    SettingKind::BrowserBackend,
     SettingKind::BypassPermissions,
     SettingKind::IdleThreshold,
     SettingKind::AutoRunIdle,
@@ -92,7 +92,7 @@ impl SettingKind {
             SettingKind::Locale => "Language",
             SettingKind::HybridThreshold => "Hybrid threshold (fit)",
             SettingKind::DryRun => "Dry-run (simulation)",
-            SettingKind::UseChrome => "Use Claude in Chrome",
+            SettingKind::BrowserBackend => "Browser backend",
             SettingKind::BypassPermissions => "Skip permissions (autonomous)",
             SettingKind::IdleThreshold => "Idle after (seconds)",
             SettingKind::AutoRunIdle => "Auto-run when idle",
@@ -103,7 +103,6 @@ impl SettingKind {
         matches!(
             self,
             SettingKind::DryRun
-                | SettingKind::UseChrome
                 | SettingKind::BypassPermissions
                 | SettingKind::AutoRunIdle
                 | SettingKind::LanguageFilter
@@ -114,7 +113,11 @@ impl SettingKind {
     /// `true` if changed by cycling/toggling in place (bools + enum settings),
     /// rather than free-text editing.
     pub fn is_cycle(self) -> bool {
-        self.is_bool() || matches!(self, SettingKind::ApplyMode | SettingKind::Locale)
+        self.is_bool()
+            || matches!(
+                self,
+                SettingKind::ApplyMode | SettingKind::Locale | SettingKind::BrowserBackend
+            )
     }
 
     /// `true` if editable via text (text or number).
@@ -140,7 +143,7 @@ impl SettingKind {
             SettingKind::Locale => s.locale.label().to_string(),
             SettingKind::HybridThreshold => format!("{:.2}", s.hybrid_threshold),
             SettingKind::DryRun => bool_str(s.dry_run),
-            SettingKind::UseChrome => bool_str(s.use_chrome),
+            SettingKind::BrowserBackend => s.browser_backend.as_str().to_string(),
             SettingKind::BypassPermissions => bool_str(s.bypass_permissions),
             SettingKind::IdleThreshold => s.idle_threshold_secs.to_string(),
             SettingKind::AutoRunIdle => bool_str(s.auto_run_on_idle),
@@ -150,7 +153,7 @@ impl SettingKind {
     fn toggle(self, s: &mut Settings) {
         match self {
             SettingKind::DryRun => s.dry_run = !s.dry_run,
-            SettingKind::UseChrome => s.use_chrome = !s.use_chrome,
+            SettingKind::BrowserBackend => s.cycle_browser_backend(),
             SettingKind::BypassPermissions => s.bypass_permissions = !s.bypass_permissions,
             SettingKind::AutoRunIdle => s.auto_run_on_idle = !s.auto_run_on_idle,
             SettingKind::LanguageFilter => s.language_filter = !s.language_filter,
@@ -954,7 +957,11 @@ impl App {
         // Saves as default for next imports.
         self.settings.linkedin_url = url.to_string();
         let _ = self.settings.save();
-        let prompt = crate::core::actions::import_linkedin_prompt(url, self.settings.locale);
+        let prompt = crate::core::actions::import_linkedin_prompt(
+            url,
+            self.settings.locale,
+            self.settings.browser_backend,
+        );
         self.spawn_session(prompt, "profile imported from LinkedIn", tx);
     }
 

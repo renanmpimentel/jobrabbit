@@ -246,21 +246,30 @@ async fn import_profile_cli(source: ImportSource) -> Result<()> {
         }
         ImportSource::Linkedin(url) => {
             println!("jobRabbit — importing profile from LinkedIn: {url}");
-            agent::prompts::build_profile_from_linkedin(&url, app.settings.locale)
+            agent::prompts::build_profile_from_linkedin(
+                &url,
+                app.settings.locale,
+                app.settings.browser_backend,
+            )
         }
         ImportSource::Both(path, url) => {
             println!("jobRabbit — importing profile from: {path} + LinkedIn: {url}");
             let text = import::extract_text(std::path::Path::new(&path))?;
             app.settings.cv_file_path = path.clone();
             let _ = app.settings.save();
-            agent::prompts::build_profile_combined(&text, &url, app.settings.locale)
+            agent::prompts::build_profile_combined(
+                &text,
+                &url,
+                app.settings.locale,
+                app.settings.browser_backend,
+            )
         }
     };
 
     let cfg = AgentConfig {
         claude_bin: app.settings.claude_bin.clone(),
         cwd: config::data_dir().ok(),
-        chrome: app.settings.use_chrome,
+        browser: Some(app.settings.browser_backend),
         bypass_permissions: app.settings.bypass_permissions,
     };
 
@@ -319,9 +328,9 @@ async fn selftest_agent() -> Result<()> {
         {\"type\":\"application\",\"url\":\"https://test/42\",\"status\":\"applied\",\"cv\":\"test cv\",\"cover\":\"test letter\"}\n\
         {\"type\":\"pending\",\"url\":\"https://test/42\",\"kind\":\"captcha\",\"description\":\"solve test captcha\"}";
 
-    // Isolated test: no Chrome/browsing, but bypassing permissions (no prompts).
+    // Isolated test: no browsing at all, but bypassing permissions (no prompts).
     let cfg = AgentConfig {
-        chrome: false,
+        browser: None,
         bypass_permissions: true,
         ..AgentConfig::default()
     };

@@ -5,8 +5,38 @@
 //! evaluate fit against the profile and generate a CV/cover letter. They are plain
 //! text: the real integration passes them via `claude -p "<prompt>"`.
 
+use crate::config::BrowserBackend;
 use crate::db::models::{JobSource, Profile, SearchVariant};
 use crate::locale::Locale;
+
+/// Rule pinning the agent to the selected browser backend, embedded in every
+/// prompt that browses. Chrome mode uses the extension (real logged-in Chrome);
+/// Playwright mode uses the Playwright MCP with its persistent profile, so no
+/// extension is required and logins survive between sessions.
+fn browser_rule(backend: BrowserBackend, locale: Locale) -> &'static str {
+    match (backend, locale) {
+        (BrowserBackend::Chrome, Locale::En) => {
+            "ALWAYS use the **Claude in Chrome** integration (the user's REAL Chrome, already logged in).\n\
+             NEVER use Playwright or open your own browser — use the connected Chrome tools."
+        }
+        (BrowserBackend::Chrome, Locale::PtBr) => {
+            "SEMPRE use a integração **Claude in Chrome** (o Chrome REAL do usuário, já logado).\n\
+             NUNCA use Playwright nem abra um navegador próprio — use as ferramentas do Chrome conectado."
+        }
+        (BrowserBackend::Playwright, Locale::En) => {
+            "ALWAYS use the **Playwright MCP** browser tools (mcp__plugin_playwright_playwright__*).\n\
+             The Playwright browser keeps a PERSISTENT profile: logins survive between sessions.\n\
+             NEVER use the Claude in Chrome extension. If a site requires login and the profile is not\n\
+             logged in, report `pending kind=\"login\"` so the user can sign in once in the Playwright browser."
+        }
+        (BrowserBackend::Playwright, Locale::PtBr) => {
+            "SEMPRE use as ferramentas de navegador do **Playwright MCP** (mcp__plugin_playwright_playwright__*).\n\
+             O navegador do Playwright mantém um perfil PERSISTENTE: logins sobrevivem entre sessões.\n\
+             NUNCA use a extensão Claude in Chrome. Se um site exigir login e o perfil não estiver logado,\n\
+             reporte `pending kind=\"login\"` para o usuário entrar uma vez no navegador do Playwright."
+        }
+    }
+}
 
 /// Block with the candidate profile, reused across all prompts.
 fn profile_block(profile: &Profile, locale: Locale) -> String {
@@ -95,6 +125,7 @@ pub fn search_and_evaluate(
     language_filter: bool,
     work_model: &str,
     sources: &[JobSource],
+    backend: BrowserBackend,
 ) -> String {
     // Enabled sources shared by all variants, as "Name (domain)" for the prompt.
     let source_list: Vec<String> = sources
@@ -175,11 +206,10 @@ pub fn search_and_evaluate(
 
             format!(
                 "You are the jobRabbit agent, helping this candidate apply to jobs.\n\n\
-                 IMPORTANT: use the **Claude in Chrome** integration (the user's REAL Chrome, already logged in).\n\
-                 Do NOT use Playwright or open your own browser — use the connected Chrome tools.\n\n\
+                 IMPORTANT: {browser_rule}\n\n\
                  {profile}\n\
                  ## Task\n\
-                 Use Chrome to search for jobs matching the variant:\n\
+                 Use the browser to search for jobs matching the variant:\n\
                  - Label: {label}\n\
                  - Query: {query}\n\n\
                  For each relevant job, evaluate the *fit* (0.0 to 1.0) against the profile (seniority, stack,\n\
@@ -202,6 +232,7 @@ pub fn search_and_evaluate(
                  - Pending (needs the user):\n\
                    {{\"type\":\"pending\",\"url\":\"<url>\",\"kind\":\"captcha|login|required_field\",\"description\":\"what's missing\"}}\n\
                  Always emit the `job` line before the `application`/`pending` for the same job (the `url` correlates them).",
+                browser_rule = browser_rule(backend, locale),
                 profile = profile_block(profile, locale),
                 label = variant.label,
                 query = variant.query,
@@ -284,11 +315,10 @@ pub fn search_and_evaluate(
 
             format!(
                 "Você é o agente do jobRabbit, que ajuda este candidato a se candidatar a vagas.\n\n\
-                 IMPORTANTE: use a integração **Claude in Chrome** (o Chrome REAL do usuário, já logado).\n\
-                 NÃO use Playwright nem abra um navegador próprio — use as ferramentas do Chrome conectado.\n\n\
+                 IMPORTANTE: {browser_rule}\n\n\
                  {perfil}\n\
                  ## Tarefa\n\
-                 Use o Chrome para buscar vagas correspondentes à variante:\n\
+                 Use o navegador para buscar vagas correspondentes à variante:\n\
                  - Rótulo: {label}\n\
                  - Busca: {query}\n\n\
                  Para cada vaga relevante, avalie o *fit* (0.0 a 1.0) contra o perfil (senioridade, stack,\n\
@@ -311,6 +341,7 @@ pub fn search_and_evaluate(
                  - Pendência (precisa do usuário):\n\
                    {{\"type\":\"pending\",\"url\":\"<url>\",\"kind\":\"captcha|login|required_field\",\"description\":\"o que falta\"}}\n\
                  Sempre emita a linha `job` antes da `application`/`pending` da mesma vaga (a `url` correlaciona).",
+                browser_rule = browser_rule(backend, locale),
                 perfil = profile_block(profile, locale),
                 label = variant.label,
                 query = variant.query,
@@ -381,6 +412,7 @@ pub fn apply_by_url(
     require_human_review: bool,
     screenshot_dir: &str,
     locale: Locale,
+    backend: BrowserBackend,
 ) -> String {
     // Precedence: dry_run > require_human_review (safety gate) > live.
     let dry_run_hint = if dry_run {
@@ -400,12 +432,13 @@ pub fn apply_by_url(
     } else {
         format!(
             "If the site requires a résumé UPLOAD, upload the file: {cv_file_path}\n\
-             (use Chrome's file-upload tool to select it)."
+             (use the browser's file-upload tool to select it)."
         )
     };
 
     let cv_guidance = cv_ats_guidance(locale);
     let hygiene = fill_hygiene(locale);
+    let browser_rule = browser_rule(backend, locale);
 
     match locale {
         Locale::En => {
@@ -414,7 +447,7 @@ pub fn apply_by_url(
                  Your mission is to EXTRACT the job details from the page, DETECT the job's language,\n\
                  and either APPLY DIRECTLY or SIMULATE (depending on dry-run mode).\n\n\
                  ## Execution flow\n\
-                 1. Use Claude in Chrome to open the URL: {url}\n\
+                 1. Open the URL in the browser: {url}\n\
                  2. Extract job title, company name, and full job description (scroll if needed).\n\
                  3. **DETECT the LANGUAGE of the job description.** Determine if it's English, Portuguese,\n\
                     Spanish, or another language. This is CRITICAL.\n\
@@ -426,11 +459,11 @@ pub fn apply_by_url(
                  8. Follow the mode above: LIVE → complete the full application flow per the platform playbook;\n\
                     REVIEW → do NOT fill or submit — report status \"ready\" with the `cv` and `cover` fields;\n\
                     DRY-RUN → simulate only.\n\
-                 9. After you see the explicit submission confirmation, take a screenshot of the confirmation with the Claude-in-Chrome screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
+                 9. After you see the explicit submission confirmation, take a screenshot of the confirmation with the browser's screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
                  {cv_guidance}\
                  ## Candidate answer bank (use it to fill the fields)\n{answers}\n\n\
                  ## Execution rules\n\
-                 - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
+                 - {browser_rule}\n\
                  - Drive the WHOLE flow per the ATS playbook, even multi-step (\"Next/Continue\").\n\
                  - Fill the fields with the answer bank, the CV/cover letter and the profile.\n\
                  {hygiene}\
@@ -464,7 +497,7 @@ pub fn apply_by_url(
                  Sua missão é EXTRAIR os detalhes da vaga da página, DETECTAR o idioma da vaga,\n\
                  e CANDIDATAR-SE ou SIMULAR (dependendo do modo dry-run).\n\n\
                  ## Fluxo de execução\n\
-                 1. Use o Claude in Chrome para abrir a URL: {url}\n\
+                 1. Abra a URL no navegador: {url}\n\
                  2. Extraia título da vaga, nome da empresa e descrição completa da vaga (scrolle se necessário).\n\
                  3. **DETECTE o IDIOMA da descrição da vaga.** Determine se é inglês, português,\n\
                     espanhol ou outro idioma. Isso é CRÍTICO.\n\
@@ -480,7 +513,7 @@ pub fn apply_by_url(
                  {cv_guidance}\
                  ## Banco de respostas do candidato (use para preencher os campos)\n{answers}\n\n\
                  ## Regras de execução\n\
-                 - SEMPRE use a integração **Claude in Chrome** (Chrome real logado). NUNCA use Playwright.\n\
+                 - {browser_rule}\n\
                  - Execute o FLUXO INTEIRO per o playbook ATS, mesmo multi-step (\"Próximo/Continuar\").\n\
                  - Preencha os campos com o banco de respostas, CV/carta e perfil.\n\
                  {hygiene}\
@@ -496,7 +529,7 @@ pub fn apply_by_url(
                  - Captcha: `pending kind=\"captcha\"` e passe.\n\
                  - NÃO desista no primeiro obstáculo: scrolle a página, ache o botão certo, avance passos.\n\
                  - Só reporte `applied` quando ver confirmação EXPLÍCITA (\"Candidatura enviada\"/\"submetido\").\n\
-                 - Após a confirmação de submissão explícita, capture screenshot via Claude in Chrome,\n\
+                 - Após a confirmação de submissão explícita, capture screenshot via ferramenta do navegador,\n\
                    salve como arquivo PNG e inclua seu caminho absoluto no campo `screenshot` da\n\
                    aplicação JSON. BEST-EFFORT: se a screenshot não puder ser capturada, ainda reporte `applied`\n\
                    SEM o campo screenshot.\n\n\
@@ -530,8 +563,10 @@ pub fn apply_for_job(
     answers: &str,
     screenshot_dir: &str,
     locale: Locale,
+    backend: BrowserBackend,
 ) -> String {
     let hygiene = fill_hygiene(locale);
+    let browser_rule = browser_rule(backend, locale);
     match locale {
         Locale::En => {
             let file_block = if cv_file_path.is_empty() {
@@ -541,7 +576,7 @@ pub fn apply_for_job(
             } else {
                 format!(
                     "If the site requires a résumé UPLOAD, upload the file: {cv_file_path}\n\
-                     (use Chrome's file-upload tool to select it)."
+                     (use the browser's file-upload tool to select it)."
                 )
             };
 
@@ -553,7 +588,7 @@ pub fn apply_for_job(
                  ---\n{playbook}\n---\n\n\
                  ## Candidate answer bank (use it to fill the fields)\n{answers}\n\n\
                  ## Execution rules\n\
-                 - ALWAYS use the **Claude in Chrome** integration (REAL logged-in Chrome). NEVER use Playwright.\n\
+                 - {browser_rule}\n\
                  - Drive the WHOLE flow per the playbook, even multi-step (\"Next/Continue\").\n\
                  - Fill the fields with the answer bank, the CV/cover letter and the profile.\n\
                  {hygiene}\
@@ -569,7 +604,7 @@ pub fn apply_for_job(
                  - Captcha: `pending kind=\"captcha\"` and skip.\n\
                  - Do NOT give up at the first obstacle: scroll the page, find the right button, advance steps.\n\
                  - Only report `applied` when you see an explicit CONFIRMATION (\"Application sent\"/\"submitted\").\n\
-                 - After you see the explicit submission confirmation, take a screenshot of the confirmation with the Claude-in-Chrome screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
+                 - After you see the explicit submission confirmation, take a screenshot of the confirmation with the browser's screenshot tool. Then save that screenshot as a PNG file into this directory: `{screenshot_dir}` — pick a unique filename such as `confirmation-<timestamp>.png`. Use the **Write** tool (or a Bash `base64 -d` step) and ENSURE the saved file is a valid BINARY PNG — decode the base64 image data if needed, do NOT write the raw base64 text. Put the FULL absolute path of the saved file in the `screenshot` field of the application JSON. This is BEST-EFFORT: if you cannot save it, still report `applied` without the `screenshot` field.\n\n\
                  ### Job\n- Role: {job_title}\n- Company: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Cover letter\n{cover}\n\n\
                  ## Output (REQUIRED) — ONE JSON line per event, no text outside it:\n\
@@ -589,7 +624,7 @@ pub fn apply_for_job(
             } else {
                 format!(
                     "Se o site exigir UPLOAD de currículo, faça upload do arquivo: {cv_file_path}\n\
-                     (use a ferramenta de upload de arquivo do Chrome para selecioná-lo)."
+                     (use a ferramenta de upload de arquivo do navegador para selecioná-lo)."
                 )
             };
 
@@ -601,7 +636,7 @@ pub fn apply_for_job(
                  ---\n{playbook}\n---\n\n\
                  ## Banco de respostas do candidato (use para preencher os campos)\n{answers}\n\n\
                  ## Regras de execução\n\
-                 - Use SEMPRE a integração **Claude in Chrome** (Chrome REAL logado). NUNCA use Playwright.\n\
+                 - {browser_rule}\n\
                  - Conduza TODO o fluxo conforme o playbook, mesmo multi-etapas (\"Próximo/Next/Continuar\").\n\
                  - Preencha os campos com o banco de respostas, o CV/carta e o perfil.\n\
                  {hygiene}\
@@ -618,7 +653,7 @@ pub fn apply_for_job(
                  - Captcha: `pending kind=\"captcha\"` e pule.\n\
                  - NÃO desista no primeiro obstáculo: role a página, procure o botão certo, avance etapas.\n\
                  - Só reporte `applied` ao ver uma CONFIRMAÇÃO explícita (\"Candidatura enviada\"/\"submitted\").\n\
-                 - Após ver a confirmação explícita de envio, capture uma screenshot da confirmação com a ferramenta de screenshot do Claude-in-Chrome. Então salve essa screenshot como arquivo PNG neste diretório: `{screenshot_dir}` — escolha um nome único como `confirmation-<timestamp>.png`. Use a ferramenta **Write** (ou um passo Bash `base64 -d`) e GARANTA que o arquivo salvo seja um PNG BINÁRIO válido — decodifique os dados base64 da imagem se necessário, NÃO grave o texto base64 cru. Coloque o caminho absoluto COMPLETO do arquivo salvo no campo `screenshot` do JSON de candidatura. Isso é BEST-EFFORT: se você não puder salvá-lo, ainda reporte `applied` sem o campo `screenshot`.\n\n\
+                 - Após ver a confirmação explícita de envio, capture uma screenshot da confirmação com a ferramenta de screenshot do navegador. Então salve essa screenshot como arquivo PNG neste diretório: `{screenshot_dir}` — escolha um nome único como `confirmation-<timestamp>.png`. Use a ferramenta **Write** (ou um passo Bash `base64 -d`) e GARANTA que o arquivo salvo seja um PNG BINÁRIO válido — decodifique os dados base64 da imagem se necessário, NÃO grave o texto base64 cru. Coloque o caminho absoluto COMPLETO do arquivo salvo no campo `screenshot` do JSON de candidatura. Isso é BEST-EFFORT: se você não puder salvá-lo, ainda reporte `applied` sem o campo `screenshot`.\n\n\
                  ### Vaga\n- Cargo: {job_title}\n- Empresa: {company}\n- URL: {url}\n\n\
                  ### CV\n{cv}\n\n### Carta de apresentação\n{cover}\n\n\
                  ## Saída (OBRIGATÓRIO) — UMA linha JSON por evento, sem texto fora dela:\n\
@@ -995,14 +1030,20 @@ pub fn build_profile(cv_text: &str, locale: Locale) -> String {
 }
 
 /// Prompt to build the profile using TWO sources: the CV text (primary) and
-/// LinkedIn (enrichment via Chrome).
-pub fn build_profile_combined(cv_text: &str, url: &str, locale: Locale) -> String {
+/// LinkedIn (enrichment via the browser).
+pub fn build_profile_combined(
+    cv_text: &str,
+    url: &str,
+    locale: Locale,
+    backend: BrowserBackend,
+) -> String {
+    let browser_rule = browser_rule(backend, locale);
     match locale {
         Locale::En => format!(
             "You are the jobRabbit agent. Build the candidate profile by combining TWO sources:\n\
              1) The CV below (primary, most complete source).\n\
-             2) LinkedIn at {url} — use the Claude in Chrome integration (REAL logged-in Chrome,\n\
-                NOT Playwright) to enrich/update (recent roles, skills, summary).\n\
+             2) LinkedIn at {url} — open it in the browser to enrich/update\n\
+                (recent roles, skills, summary). {browser_rule}\n\
                 If you can't access it, use the CV only.\n\n\
              ### Résumé (extracted text)\n{cv_text}\n\n\
              {format}",
@@ -1011,8 +1052,8 @@ pub fn build_profile_combined(cv_text: &str, url: &str, locale: Locale) -> Strin
         Locale::PtBr => format!(
             "Você é o agente do jobRabbit. Construa o perfil do candidato combinando DUAS fontes:\n\
              1) O CV abaixo (fonte primária e mais completa).\n\
-             2) O LinkedIn em {url} — use a integração Claude in Chrome (Chrome REAL logado,\n\
-                NÃO Playwright) para enriquecer/atualizar (cargos recentes, skills, resumo).\n\
+             2) O LinkedIn em {url} — abra no navegador para enriquecer/atualizar\n\
+                (cargos recentes, skills, resumo). {browser_rule}\n\
                 Se não conseguir acessar, use só o CV.\n\n\
              ### Currículo (texto extraído)\n{cv_text}\n\n\
              {formato}",
@@ -1022,20 +1063,19 @@ pub fn build_profile_combined(cv_text: &str, url: &str, locale: Locale) -> Strin
 }
 
 /// Prompt to build the profile by browsing the candidate's LinkedIn.
-pub fn build_profile_from_linkedin(url: &str, locale: Locale) -> String {
+pub fn build_profile_from_linkedin(url: &str, locale: Locale, backend: BrowserBackend) -> String {
+    let browser_rule = browser_rule(backend, locale);
     match locale {
         Locale::En => format!(
-            "You are the jobRabbit agent. Use the **Claude in Chrome** integration (REAL Chrome,\n\
-             already logged in, NOT Playwright) to open the LinkedIn\n\
-             profile at {url} and extract experience, roles, skills and summary.\n\
+            "You are the jobRabbit agent. {browser_rule}\n\
+             Open the LinkedIn profile at {url} and extract experience, roles, skills and summary.\n\
              With that, build the candidate profile.\n\n\
              {format}",
             format = profile_format(locale),
         ),
         Locale::PtBr => format!(
-            "Você é o agente do jobRabbit. Use a integração **Claude in Chrome** (Chrome REAL já\n\
-             logado, NÃO Playwright) para abrir o perfil do\n\
-             LinkedIn em {url} e extrair experiência, cargos, skills e resumo.\n\
+            "Você é o agente do jobRabbit. {browser_rule}\n\
+             Abra o perfil do LinkedIn em {url} e extraia experiência, cargos, skills e resumo.\n\
              Com isso, construa o perfil do candidato.\n\n\
              {formato}",
             formato = profile_format(locale),
@@ -1047,7 +1087,8 @@ pub fn build_profile_from_linkedin(url: &str, locale: Locale) -> String {
 ///
 /// The agent continues from where it stopped, following the same NDJSON protocol
 /// (job/application/pending lines).
-pub fn continue_session(user_msg: &str, locale: Locale) -> String {
+pub fn continue_session(user_msg: &str, locale: Locale, backend: BrowserBackend) -> String {
+    let browser_rule = browser_rule(backend, locale);
     let user_instruction = if user_msg.is_empty() {
         String::new()
     } else {
@@ -1071,7 +1112,7 @@ pub fn continue_session(user_msg: &str, locale: Locale) -> String {
                  - Application: {{\"type\":\"application\",...}}\n\
                  - Pending: {{\"type\":\"pending\",...}}\n\
                  - Answer discovered: {{\"type\":\"answer\",...}}\n\n\
-                 Use the **Claude in Chrome** integration (REAL logged-in Chrome, NOT Playwright).\n\
+                 {browser_rule}\n\
                  Remember: do not emit duplicate lines for work already completed in the previous session.\n\
                  Pick up exactly where the session ended."
             )
@@ -1089,7 +1130,7 @@ pub fn continue_session(user_msg: &str, locale: Locale) -> String {
                  - Candidatura: {{\"type\":\"application\",...}}\n\
                  - Pendência: {{\"type\":\"pending\",...}}\n\
                  - Resposta descoberta: {{\"type\":\"answer\",...}}\n\n\
-                 Use a integração **Claude in Chrome** (Chrome REAL logado, NÃO Playwright).\n\
+                 {browser_rule}\n\
                  Lembre-se: não emita linhas duplicadas de trabalho já concluído na sessão anterior.\n\
                  Continue exatamente de onde a sessão parou."
             )
@@ -1130,6 +1171,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(p.contains("Rust/Go"));
         assert!(p.contains("Senior Remote"));
@@ -1171,6 +1213,7 @@ mod tests {
             false,
             "remote",
             &sources,
+            BrowserBackend::Chrome,
         );
         assert!(p.contains("Job sources"));
         assert!(p.contains("LinkedIn (linkedin.com)"));
@@ -1188,6 +1231,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(!none.contains("Job sources"));
     }
@@ -1212,6 +1256,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(!without.contains("Language: English only"));
 
@@ -1226,6 +1271,7 @@ mod tests {
             true,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(with.contains("Language: English only"));
         assert!(with.contains("skipped"));
@@ -1242,6 +1288,7 @@ mod tests {
             true,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(pt.contains("APENAS pt-BR"));
     }
@@ -1267,6 +1314,7 @@ mod tests {
             false,
             "onsite",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(onsite_en.contains("ON-SITE"));
 
@@ -1282,6 +1330,7 @@ mod tests {
             false,
             "hybrid",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(hybrid_pt.contains("HÍBRIDAS"));
     }
@@ -1306,6 +1355,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(review.contains("REVIEW"));
         assert!(review.contains("Do NOT submit"));
@@ -1321,6 +1371,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(auto.contains("AUTONOMOUS"));
         assert!(auto.contains("SUBMIT"));
@@ -1336,6 +1387,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(dry.contains("SIMULATION") || dry.contains("dry-run"));
         assert!(dry.contains("dry_run"));
@@ -1352,6 +1404,7 @@ mod tests {
             "- english_level: advanced\n",
             "/tmp/shots",
             Locale::En,
+            BrowserBackend::Chrome,
         );
         assert!(apply.contains("APPROVED"));
         assert!(apply.contains("https://x/1"));
@@ -1392,6 +1445,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(
             gated.contains("HUMAN REVIEW"),
@@ -1415,6 +1469,7 @@ mod tests {
             true,  // require_human_review
             "/tmp/shots",
             Locale::En,
+            BrowserBackend::Chrome,
         );
         assert!(
             by_url.contains("REVIEW MODE"),
@@ -1495,6 +1550,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(
             pt.contains("IDIOMA DA"),
@@ -1511,6 +1567,7 @@ mod tests {
             false,
             "remote",
             &[],
+            BrowserBackend::Chrome,
         );
         assert!(en.contains("LANGUAGE OF THE JOB"));
     }
@@ -1549,6 +1606,7 @@ mod tests {
             false,
             "/tmp",
             Locale::En,
+            BrowserBackend::Chrome,
         );
         assert!(p.contains("CLEAR it first"));
         let p = apply_for_job(
@@ -1563,6 +1621,7 @@ mod tests {
             "- k: v",
             "/tmp",
             Locale::PtBr,
+            BrowserBackend::Chrome,
         );
         assert!(p.contains("LIMPE o campo primeiro"));
     }
@@ -1595,7 +1654,11 @@ mod tests {
         assert!(p.contains("João Dev"));
         assert!(p.contains("\"type\":\"profile\""));
         assert!(p.contains("variants"));
-        let l = build_profile_from_linkedin("https://linkedin.com/in/joao", Locale::En);
+        let l = build_profile_from_linkedin(
+            "https://linkedin.com/in/joao",
+            Locale::En,
+            BrowserBackend::Chrome,
+        );
         assert!(l.contains("linkedin.com/in/joao"));
         assert!(l.contains("\"type\":\"profile\""));
     }
@@ -1617,6 +1680,7 @@ mod tests {
             false,
             "/tmp/shots",
             Locale::En,
+            BrowserBackend::Chrome,
         );
         assert!(
             prompt.contains("https://example.com/job/123"),
@@ -1656,6 +1720,7 @@ mod tests {
             false,
             "/tmp/shots",
             Locale::PtBr,
+            BrowserBackend::Chrome,
         );
         assert!(pt_prompt.contains("https://example.com/job/456"));
         assert!(pt_prompt.to_lowercase().contains("idioma"));
@@ -1663,9 +1728,68 @@ mod tests {
     }
 
     #[test]
+    fn prompts_follow_browser_backend() {
+        let v = SearchVariant {
+            id: 1,
+            label: "L".into(),
+            query: "q".into(),
+            enabled: true,
+            created_at: "x".into(),
+        };
+        let chrome = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+            &[],
+            BrowserBackend::Chrome,
+        );
+        assert!(chrome.contains("Claude in Chrome"));
+        assert!(chrome.contains("NEVER use Playwright"));
+
+        let pw = search_and_evaluate(
+            &sample_profile(),
+            &v,
+            "review",
+            false,
+            false,
+            0.9,
+            Locale::En,
+            false,
+            "remote",
+            &[],
+            BrowserBackend::Playwright,
+        );
+        assert!(pw.contains("Playwright MCP"));
+        assert!(pw.contains("PERSISTENT profile"));
+        assert!(pw.contains("NEVER use the Claude in Chrome extension"));
+
+        let pw_apply = apply_by_url(
+            "https://x/1",
+            "",
+            "- k: v",
+            false,
+            false,
+            "/tmp",
+            Locale::En,
+            BrowserBackend::Playwright,
+        );
+        assert!(pw_apply.contains("Playwright MCP"));
+
+        let pw_continue = continue_session("", Locale::PtBr, BrowserBackend::Playwright);
+        assert!(pw_continue.contains("Playwright MCP"));
+        assert!(pw_continue.contains("perfil PERSISTENTE"));
+    }
+
+    #[test]
     fn continue_session_includes_user_msg() {
         // Test English locale without user message
-        let en_prompt = continue_session("", Locale::En);
+        let en_prompt = continue_session("", Locale::En, BrowserBackend::Chrome);
         assert!(
             en_prompt.to_lowercase().contains("resume"),
             "must mention resume/continue"
@@ -1677,12 +1801,13 @@ mod tests {
         assert!(en_prompt.contains("Claude in Chrome"));
 
         // Test English locale with user message
-        let en_with_msg = continue_session("type X carefully", Locale::En);
+        let en_with_msg = continue_session("type X carefully", Locale::En, BrowserBackend::Chrome);
         assert!(en_with_msg.contains("type X carefully"));
         assert!(en_with_msg.contains("Additional instruction from the user"));
 
         // Test Portuguese locale with message
-        let pt_with_msg = continue_session("faça Y com cuidado", Locale::PtBr);
+        let pt_with_msg =
+            continue_session("faça Y com cuidado", Locale::PtBr, BrowserBackend::Chrome);
         assert!(pt_with_msg.contains("faça Y com cuidado"));
         assert!(pt_with_msg.contains("Instrução adicional do usuário"));
         assert!(
@@ -1691,7 +1816,7 @@ mod tests {
         );
 
         // Test empty message in Portuguese
-        let pt_prompt = continue_session("", Locale::PtBr);
+        let pt_prompt = continue_session("", Locale::PtBr, BrowserBackend::Chrome);
         assert!(!pt_prompt.contains("Instrução adicional do usuário:"));
     }
 }

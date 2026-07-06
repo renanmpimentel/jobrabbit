@@ -104,7 +104,7 @@ export interface Settings {
   claude_bin: string;
   idle_threshold_secs: number;
   auto_run_on_idle: boolean;
-  use_chrome: boolean;
+  browser_backend: "chrome" | "playwright";
   bypass_permissions: boolean;
   apply_mode: string;
   require_human_review: boolean;

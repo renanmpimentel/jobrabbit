@@ -3,7 +3,7 @@
 inHire forms (e.g. company.inhire.app) ask for identity fields up front,
 before screening questions.
 
-1. Open the job page in the logged-in Chrome.
+1. Open the job page in the logged-in browser.
 2. Fill the identity fields from the ANSWER BANK first: full name, CPF,
    phone (with DDD), birth date, city/state. These are the user's own data —
    fill them when present.

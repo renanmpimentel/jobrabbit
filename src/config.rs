@@ -23,6 +23,36 @@ pub fn settings_path() -> Result<PathBuf> {
     Ok(data_dir()?.join("settings.json"))
 }
 
+/// Browser automation backend used by the agent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum BrowserBackend {
+    /// Claude in Chrome extension (the user's real, logged-in Chrome) via `--chrome`.
+    #[default]
+    Chrome,
+    /// Playwright MCP (Claude Code's playwright plugin) with a persistent profile —
+    /// no extension required; the user logs in once in the Playwright browser.
+    Playwright,
+}
+
+impl BrowserBackend {
+    /// Stable identifier, matching the serialized form.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BrowserBackend::Chrome => "chrome",
+            BrowserBackend::Playwright => "playwright",
+        }
+    }
+
+    /// The other backend (used by the TUI cycle toggle).
+    pub fn next(self) -> Self {
+        match self {
+            BrowserBackend::Chrome => BrowserBackend::Playwright,
+            BrowserBackend::Playwright => BrowserBackend::Chrome,
+        }
+    }
+}
+
 /// User settings, persisted in `settings.json`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -33,8 +63,8 @@ pub struct Settings {
     pub idle_threshold_secs: u64,
     /// If `true`, the agent runs on its own when the user is idle.
     pub auto_run_on_idle: bool,
-    /// Use the Claude in Chrome extension (real logged-in Chrome) via the `--chrome` flag.
-    pub use_chrome: bool,
+    /// Browser backend: Claude in Chrome extension or Playwright MCP (no extension).
+    pub browser_backend: BrowserBackend,
     /// Skip permission prompts in the headless agent (`--permission-mode bypassPermissions`).
     pub bypass_permissions: bool,
     /// Apply mode: "review" | "autonomous" | "hybrid".
@@ -70,7 +100,7 @@ impl Default for Settings {
             claude_bin: "claude".to_string(),
             idle_threshold_secs: 300,
             auto_run_on_idle: false,
-            use_chrome: true,
+            browser_backend: BrowserBackend::Chrome,
             bypass_permissions: true,
             apply_mode: "review".to_string(),
             require_human_review: true,
@@ -101,6 +131,11 @@ impl Settings {
     pub fn cycle_locale(&mut self) {
         self.locale = self.locale.next();
     }
+
+    /// Switch between browser backends (cycle).
+    pub fn cycle_browser_backend(&mut self) {
+        self.browser_backend = self.browser_backend.next();
+    }
 }
 
 impl Settings {
@@ -114,7 +149,15 @@ impl Settings {
 
     pub fn load_from(path: &Path) -> Result<Self> {
         let data = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&data)?)
+        let mut settings: Settings = serde_json::from_str(&data)?;
+        // Migration: files written before `browser_backend` carried `use_chrome`.
+        let raw: serde_json::Value = serde_json::from_str(&data)?;
+        if raw.get("browser_backend").is_none()
+            && raw.get("use_chrome").and_then(|v| v.as_bool()) == Some(false)
+        {
+            settings.browser_backend = BrowserBackend::Playwright;
+        }
+        Ok(settings)
     }
 
     /// Save to the default path (best-effort).
@@ -151,6 +194,43 @@ mod tests {
 
         let loaded = Settings::load_from(&path).unwrap();
         assert_eq!(loaded, s);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn legacy_use_chrome_false_migrates_to_playwright() {
+        let dir = std::env::temp_dir().join("jobrabbit_test_settings_migration");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings-legacy-false.json");
+        std::fs::write(&path, r#"{"use_chrome": false}"#).unwrap();
+        let loaded = Settings::load_from(&path).unwrap();
+        assert_eq!(loaded.browser_backend, BrowserBackend::Playwright);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn legacy_use_chrome_true_migrates_to_chrome() {
+        let dir = std::env::temp_dir().join("jobrabbit_test_settings_migration");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings-legacy-true.json");
+        std::fs::write(&path, r#"{"use_chrome": true}"#).unwrap();
+        let loaded = Settings::load_from(&path).unwrap();
+        assert_eq!(loaded.browser_backend, BrowserBackend::Chrome);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn browser_backend_takes_precedence_over_legacy_flag() {
+        let dir = std::env::temp_dir().join("jobrabbit_test_settings_migration");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings-both.json");
+        std::fs::write(
+            &path,
+            r#"{"use_chrome": false, "browser_backend": "chrome"}"#,
+        )
+        .unwrap();
+        let loaded = Settings::load_from(&path).unwrap();
+        assert_eq!(loaded.browser_backend, BrowserBackend::Chrome);
         let _ = std::fs::remove_file(&path);
     }
 

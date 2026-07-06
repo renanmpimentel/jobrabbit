@@ -18,7 +18,7 @@ pub fn agent_config(settings: &Settings) -> AgentConfig {
     AgentConfig {
         claude_bin: settings.claude_bin.clone(),
         cwd: config::data_dir().ok(),
-        chrome: settings.use_chrome,
+        browser: Some(settings.browser_backend),
         bypass_permissions: settings.bypass_permissions,
     }
 }
@@ -52,6 +52,7 @@ pub fn search_prompts(db: &Db, settings: &Settings) -> Result<Vec<String>, Strin
                 settings.language_filter,
                 &settings.work_model,
                 &sources,
+                settings.browser_backend,
             )
         })
         .collect())
@@ -134,6 +135,7 @@ pub fn approval_prompt(
         &answers,
         &shots_str,
         settings.locale,
+        settings.browser_backend,
     ))
 }
 
@@ -157,6 +159,7 @@ pub fn apply_by_url_prompt(url: &str, db: &Db, settings: &Settings) -> Result<St
         settings.require_human_review,
         &shots_str,
         settings.locale,
+        settings.browser_backend,
     ))
 }
 
@@ -238,8 +241,12 @@ pub fn import_cv_prompt(path: &str, locale: Locale) -> Result<(String, String), 
 }
 
 /// Prompt to build the profile by browsing LinkedIn.
-pub fn import_linkedin_prompt(url: &str, locale: Locale) -> String {
-    prompts::build_profile_from_linkedin(url, locale)
+pub fn import_linkedin_prompt(
+    url: &str,
+    locale: Locale,
+    backend: crate::config::BrowserBackend,
+) -> String {
+    prompts::build_profile_from_linkedin(url, locale, backend)
 }
 
 /// Spawns an agent execution that processes `prompts` in sequence.

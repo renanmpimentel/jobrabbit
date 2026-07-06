@@ -13,6 +13,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+use crate::config::BrowserBackend;
 use crate::event::AppEvent;
 use stream::{parse_line, StreamEvent};
 
@@ -23,8 +24,8 @@ pub struct AgentConfig {
     pub claude_bin: String,
     /// Agent working directory.
     pub cwd: Option<PathBuf>,
-    /// Enable Claude in Chrome integration (flag `--chrome`).
-    pub chrome: bool,
+    /// Browser backend; `None` disables browsing entirely (e.g. selftest).
+    pub browser: Option<BrowserBackend>,
     /// Skip permissions (headless autonomous mode).
     pub bypass_permissions: bool,
 }
@@ -34,7 +35,7 @@ impl Default for AgentConfig {
         Self {
             claude_bin: "claude".to_string(),
             cwd: None,
-            chrome: true,
+            browser: Some(BrowserBackend::Chrome),
             bypass_permissions: true,
         }
     }
@@ -58,7 +59,7 @@ pub fn build_args(cfg: &AgentConfig, prompt: &str, resume_session: Option<&str>)
         "stream-json".to_string(),
         "--verbose".to_string(),
     ];
-    if cfg.chrome {
+    if cfg.browser == Some(BrowserBackend::Chrome) {
         // Use the Claude in Chrome extension (real Chrome already logged in).
         args.push("--chrome".to_string());
     }
@@ -67,9 +68,25 @@ pub fn build_args(cfg: &AgentConfig, prompt: &str, resume_session: Option<&str>)
         args.push("--permission-mode".to_string());
         args.push("bypassPermissions".to_string());
     }
-    // Force use of real Chrome, avoiding Playwright MCP (own/logged-out browser).
-    args.push("--disallowedTools".to_string());
-    args.push("mcp__plugin_playwright_playwright".to_string());
+    // Pin the agent to the selected backend: disallow the other browser's tools
+    // so a run never mixes real-Chrome and Playwright sessions.
+    match cfg.browser {
+        Some(BrowserBackend::Chrome) => {
+            args.push("--disallowedTools".to_string());
+            args.push("mcp__plugin_playwright_playwright".to_string());
+        }
+        Some(BrowserBackend::Playwright) => {
+            args.push("--disallowedTools".to_string());
+            args.push("mcp__claude-in-chrome".to_string());
+        }
+        // No browsing at all (selftest): block both backends.
+        None => {
+            args.push("--disallowedTools".to_string());
+            args.push("mcp__plugin_playwright_playwright".to_string());
+            args.push("--disallowedTools".to_string());
+            args.push("mcp__claude-in-chrome".to_string());
+        }
+    }
     if let Some(sid) = resume_session {
         args.push("--resume".to_string());
         args.push(sid.to_string());
@@ -182,18 +199,37 @@ mod tests {
         assert!(a
             .windows(2)
             .any(|w| w == ["--disallowedTools", "mcp__plugin_playwright_playwright"]));
+        assert!(!a.contains(&"mcp__claude-in-chrome".to_string()));
     }
 
     #[test]
-    fn build_args_no_chrome_no_bypass() {
+    fn build_args_playwright_backend() {
         let cfg = AgentConfig {
-            chrome: false,
+            browser: Some(BrowserBackend::Playwright),
+            ..Default::default()
+        };
+        let a = build_args(&cfg, "hi", None);
+        // Playwright mode: no extension flag, playwright allowed, chrome tools blocked.
+        assert!(!a.contains(&"--chrome".to_string()));
+        assert!(!a.contains(&"mcp__plugin_playwright_playwright".to_string()));
+        assert!(a
+            .windows(2)
+            .any(|w| w == ["--disallowedTools", "mcp__claude-in-chrome"]));
+    }
+
+    #[test]
+    fn build_args_no_browser_no_bypass() {
+        let cfg = AgentConfig {
+            browser: None,
             bypass_permissions: false,
             ..Default::default()
         };
         let a = build_args(&cfg, "hi", None);
         assert!(!a.contains(&"--chrome".to_string()));
         assert!(!a.contains(&"bypassPermissions".to_string()));
+        // No browsing: both backends blocked.
+        assert!(a.contains(&"mcp__plugin_playwright_playwright".to_string()));
+        assert!(a.contains(&"mcp__claude-in-chrome".to_string()));
     }
 
     #[test]

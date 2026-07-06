@@ -817,7 +817,10 @@ async fn post_import(
     State(s): State<AppState>,
     Json(body): Json<ImportBody>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let locale = s.settings.lock().unwrap().locale;
+    let (locale, backend) = {
+        let settings = s.settings.lock().unwrap();
+        (settings.locale, settings.browser_backend)
+    };
     let (prompt, msg) = if let Some(path) = body.cv_path.filter(|p| !p.trim().is_empty()) {
         let (prompt, _text) =
             actions::import_cv_prompt(&path, locale).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
@@ -827,7 +830,7 @@ async fn post_import(
         let _ = settings.save();
         (prompt, "profile imported from CV")
     } else if let Some(url) = body.linkedin_url.filter(|u| !u.trim().is_empty()) {
-        let prompt = actions::import_linkedin_prompt(&url, locale);
+        let prompt = actions::import_linkedin_prompt(&url, locale, backend);
         let mut settings = s.settings.lock().unwrap();
         settings.linkedin_url = url;
         let _ = settings.save();
@@ -865,6 +868,7 @@ async fn post_session_continue(
     let prompt = crate::agent::prompts::continue_session(
         body.message.as_deref().unwrap_or("").trim(),
         settings.locale,
+        settings.browser_backend,
     );
 
     // Preflight Claude

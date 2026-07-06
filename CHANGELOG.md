@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Selectable browser backend**: the Claude in Chrome extension is no longer
+  required. A new **Config → Browser** setting picks how the agent browses:
+  `chrome` (the extension driving your real, logged-in Chrome — still the
+  default) or `playwright` (Claude Code's Playwright plugin with a persistent
+  profile — no extension; log in once and the session is remembered). Prompts,
+  doctor checks and both UIs follow the selected backend.
+
+### Changed
+- `settings.json`: `use_chrome` was replaced by `browser_backend`
+  (`"chrome"` | `"playwright"`). Legacy files are migrated automatically
+  (`use_chrome: true` → `chrome`, `false` → `playwright`).
+
 ## [1.3.0] - 2026-07-02
 
 ### Added

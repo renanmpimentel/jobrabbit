@@ -246,8 +246,15 @@ export default function Config() {
       <Card>
         <CardHeader title={t("config.agent")} />
         <div className="divide-y divide-border">
-          <Row label={t("config.useChrome")} hint={t("config.useChromeHint")}>
-            <Toggle on={s.use_chrome} onClick={() => set("use_chrome", !s.use_chrome)} />
+          <Row label={t("config.browserBackend")} hint={t("config.browserBackendHint")}>
+            <Select
+              value={s.browser_backend}
+              onChange={(e) => set("browser_backend", e.target.value as "chrome" | "playwright")}
+              className="py-1.5"
+            >
+              <option value="chrome">{t("config.browserChrome")}</option>
+              <option value="playwright">{t("config.browserPlaywright")}</option>
+            </Select>
           </Row>
           <Row label={t("config.bypassPermissions")} hint={t("config.bypassPermissionsHint")}>
             <Toggle on={s.bypass_permissions} onClick={() => set("bypass_permissions", !s.bypass_permissions)} />

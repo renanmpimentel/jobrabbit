@@ -22,7 +22,8 @@ Everything builds via **Docker** — your host doesn't need Rust or Node.
 
 - [Docker](https://www.docker.com/) (with Compose).
 - To *run* the app (not just build) you also need, on the host: an authenticated `claude` CLI,
-  Google Chrome + the **Claude in Chrome** extension, and `libxcb1 libxss1 libdbus-1-3`.
+  a browser backend — Google Chrome + the **Claude in Chrome** extension (default) *or* Claude
+  Code's **Playwright** plugin (no extension) — and `libxcb1 libxss1 libdbus-1-3`.
 
 ## Build & test
 

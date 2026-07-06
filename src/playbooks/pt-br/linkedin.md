@@ -1,6 +1,6 @@
 # Playbook — LinkedIn Easy Apply (linkedin.com/jobs)
 
-Requer estar logado no LinkedIn (a sessão do Chrome normalmente já está).
+Requer estar logado no LinkedIn (a sessão do navegador — Chrome real ou o perfil persistente do Playwright — normalmente já está).
 
 ## Fluxo
 1. Abra a vaga. Procure o botão "Candidatura simplificada" / "Easy Apply".

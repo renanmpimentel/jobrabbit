@@ -115,18 +115,24 @@ pub fn run(db: &Db, settings: &Settings) -> Vec<Check> {
         )),
     }
 
-    // 2) Google Chrome — required for Claude in Chrome integration.
-    match find_chrome() {
-        Some(p) => checks.push(Check::ok(
-            "Google Chrome",
-            format!("found in {p} — confirm that the Claude in Chrome extension is installed and logged in"),
+    // 2) Browser backend — Chrome is only required for the Claude in Chrome integration;
+    //    the Playwright backend brings its own browser with a persistent profile.
+    match settings.browser_backend {
+        crate::config::BrowserBackend::Chrome => match find_chrome() {
+            Some(p) => checks.push(Check::ok(
+                "Google Chrome",
+                format!("found in {p} — confirm that the Claude in Chrome extension is installed and logged in"),
+            )),
+            None => checks.push(Check::warn(
+                "Google Chrome",
+                "browser not found",
+                "Install Google Chrome and the Claude in Chrome extension (automation depends on logged-in Chrome), or switch the browser backend to Playwright in the Config tab.",
+            )),
+        },
+        crate::config::BrowserBackend::Playwright => checks.push(Check::ok(
+            "Browser backend",
+            "Playwright MCP — Chrome and the Claude in Chrome extension are not required; log in once in the Playwright browser (profile persists)",
         )),
-        None if settings.use_chrome => checks.push(Check::warn(
-            "Google Chrome",
-            "browser not found",
-            "Install Google Chrome and the Claude in Chrome extension (automation depends on logged-in Chrome).",
-        )),
-        None => checks.push(Check::ok("Google Chrome", "not required (Use Claude in Chrome is off)")),
     }
 
     // 3) Graphical session — Chrome and automatic browser opening depend on this.

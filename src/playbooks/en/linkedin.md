@@ -1,6 +1,6 @@
 # Playbook — LinkedIn Easy Apply (linkedin.com/jobs)
 
-Requires being logged in to LinkedIn (the Chrome session usually already is).
+Requires being logged in to LinkedIn (the browser session — real Chrome or the Playwright persistent profile — usually already is).
 
 ## Flow
 1. Open the job. Look for the "Easy Apply" button.
