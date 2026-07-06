@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Doctor speaks your language**: `--doctor` and the web Health page follow the
+  configured locale (pt-BR fully translated) instead of mixing English into a
+  localized UI.
+- **Smaller release binaries**: debug symbols are stripped (`strip = true`),
+  cutting the Linux binary from ~17.8 MB to a fraction of that.
+- README language section now matches reality: the UI starts in your browser's
+  language (English elsewhere), selectable in Config.
+
+### Fixed
+- **Docker builds no longer leave root-owned files** in the checkout: `make` and
+  `scripts/build-release.sh` pre-create the volume mountpoints as the host user
+  and chown build outputs (`dist/`, `web-ui/dist/`, formatted sources) back.
+- **`make` on machines with many compose projects**: services use the default
+  docker bridge (`network_mode: bridge`), so compose no longer fails with
+  "all predefined address pools have been fully subnetted".
+- **`--tui` without a terminal** now fails with an actionable message
+  (suggesting the web UI or `--snapshot`) instead of `No such device or
+  address (os error 6)`.
+- **Unknown `/api/*` routes return a JSON 404** instead of the SPA's HTML with
+  status 200.
+
 ## [1.5.0] - 2026-07-06
 
 ### Added

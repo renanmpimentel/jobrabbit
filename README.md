@@ -11,7 +11,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-127%20passing-22c55e?style=flat-square)](#-developers)
+[![Tests](https://img.shields.io/badge/tests-129%20passing-22c55e?style=flat-square)](#-developers)
 [![Platforms](https://img.shields.io/badge/Linux%20·%20macOS%20·%20Windows-single%20binary-3178C6?style=flat-square)](#-platform-notes)
 [![i18n](https://img.shields.io/badge/i18n-EN%20·%20pt--BR-8b5cf6?style=flat-square)](#-language)
 
@@ -40,7 +40,7 @@ Windows, with a polished **web UI** (default) or a classic **terminal UI** (`--t
 - 🛡️ **Human-in-the-loop by default.** It always stops for your approval before filling or submitting — even in autonomous mode. It never bypasses captchas.
 - 🔔 **Tells you when it's stuck.** Login, captcha or a screening question → in-app alert, Pending badge, and a desktop notification, with the full job context inline.
 - 📊 **ATS résumé checker.** Score your CV 0–100 with a keyword-gap report you can apply in one click.
-- 🌍 **Bilingual** — English by default, pt-BR selectable, for both the UI *and* the agent.
+- 🌍 **Bilingual** — English and pt-BR, for both the UI *and* the agent; starts in your browser's language.
 
 ## 📋 Requirements
 
@@ -128,7 +128,8 @@ and future runs stay logged in. Captchas and logins are never bypassed, same as 
 
 ## 🌍 Language
 
-jobRabbit is English-first. Switch to **Português** from the **Config** page (web UI) or the
+jobRabbit speaks **English** and **Português (Brasil)**. The web UI starts in your browser's
+language (English everywhere else) — switch anytime from the **Config** page (web UI) or the
 **Config** tab (TUI). The choice also sets the **agent's** language, so it searches the right job
 boards and writes your CV and cover letters in that language.
 
@@ -194,6 +195,10 @@ make app        # same, but runs the test suite first
 ./dist/jobrabbit
 ```
 
+> Docker says *"all predefined address pools have been fully subnetted"*? Your machine has too
+> many leftover compose networks — run `docker network prune` (the services here use the default
+> bridge, so newer checkouts don't create one).
+
 ### Dev shortcuts (Docker)
 
 ```bash
@@ -214,7 +219,7 @@ make tui          # classic TUI (needs a TTY)
 ### Tests & diagnostics
 
 ```bash
-cargo test                     # 127 tests (parser, DB, protocol, prompts, sanitize, CLI, TUI) — or `make test`
+cargo test                     # 129 tests (parser, DB, protocol, prompts, sanitize, CLI, TUI) — or `make test`
 jobrabbit --selftest-agent     # real E2E: runs claude (safe prompt, no browsing) through the pipeline
 jobrabbit --snapshot           # preview the TUI screens as text (no TTY)
 jobrabbit --doctor             # environment diagnostics (deps + config, per OS)
