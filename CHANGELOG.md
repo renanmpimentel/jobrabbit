@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - 2026-07-06
 
 ### Added
 - **Selectable browser backend**: the Claude in Chrome extension is no longer
@@ -14,11 +14,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default) or `playwright` (Claude Code's Playwright plugin with a persistent
   profile — no extension; log in once and the session is remembered). Prompts,
   doctor checks and both UIs follow the selected backend.
+- **`--help`/`-h` and `--version`/`-V` flags**. Unknown flags now print the
+  usage and exit with code 2 instead of silently starting the web UI.
+- **Single-instance lock**: a second jobRabbit now refuses to start (with a
+  clear message) instead of sharing the SQLite database with the first one.
+  Read-only/self-contained modes (`--doctor`, `--snapshot`, `--selftest-agent`)
+  are exempt.
+- **Brand identity**: badge logo, favicons and README banners.
 
 ### Changed
 - `settings.json`: `use_chrome` was replaced by `browser_backend`
   (`"chrome"` | `"playwright"`). Legacy files are migrated automatically
   (`use_chrome: true` → `chrome`, `false` → `playwright`).
+- Web UI: heavy vendor libraries (React, Framer Motion, React Query) are now
+  split into their own chunks for faster loads.
+
+### Fixed
+- Starting on a busy port now explains that another instance may be running
+  and suggests `jobrabbit --port <number>`, instead of a raw
+  "Address already in use" error.
+- README: the default `make` target builds and runs (tests live in
+  `make app`/`make test`); documented `--port` and the port-busy
+  troubleshooting entry.
+
+## [1.4.0] - 2026-07-03
+
+### Added
+- **Cross-platform desktop support**: the same binary now runs on Linux,
+  macOS and Windows, with per-OS notifications, secure token storage and
+  link opening.
+- **Release workflow**: tagged releases publish binaries for the four
+  targets (Linux x86_64, macOS arm64/x86_64, Windows x86_64), with the
+  Intel macOS build cross-compiled on the Apple Silicon runner.
+- Cross-platform install guide in the README (per-OS download table and
+  first-run steps).
 
 ## [1.3.0] - 2026-07-02
 

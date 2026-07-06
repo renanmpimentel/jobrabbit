@@ -11,7 +11,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-120%20passing-22c55e?style=flat-square)](#-desenvolvedores)
+[![Tests](https://img.shields.io/badge/tests-127%20passing-22c55e?style=flat-square)](#-desenvolvedores)
 [![Plataformas](https://img.shields.io/badge/Linux%20·%20macOS%20·%20Windows-bin%C3%A1rio%20%C3%BAnico-3178C6?style=flat-square)](#-notas-por-plataforma)
 [![i18n](https://img.shields.io/badge/i18n-EN%20·%20pt--BR-8b5cf6?style=flat-square)](#-idioma)
 
@@ -153,6 +153,7 @@ Onde aparece "—", o recurso é apenas pulado — todo o resto funciona normalm
 ## 🧰 Solução de problemas
 
 - **"`claude` não encontrado"** — instale o Claude Code e faça login (`claude`). Rode `jobrabbit --doctor` para um checkup completo.
+- **"port 8787 is already in use" / "another jobRabbit instance is already running"** — você provavelmente deixou um jobRabbit aberto (confira seus terminais). Só uma instância pode usar o banco por vez; para rodar em outra porta use `jobrabbit --port 8788`. `jobrabbit --help` lista todas as flags.
 - **Linux: binário não abre** — instale as libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
 - **macOS: "desenvolvedor não identificado"** — libere em **Ajustes do Sistema → Privacidade e Segurança**, ou rode `xattr -d com.apple.quarantine ./jobrabbit-macos-*` uma vez.
 - **Windows: sem notificações no desktop** — esperado; os alertas no app (toast + badge de Pendências) funcionam em todo lugar.
@@ -172,7 +173,7 @@ um humano no comando por padrão (modo `review`) e nunca burla captchas.
 
 ### Build do código (qualquer SO)
 
-Requer **Rust** (stable) e **Node 20+**.
+Requer **Rust** (stable, via [rustup.rs](https://rustup.rs)) e **Node 20+**.
 
 ```bash
 cd web-ui && npm install && npm run build && cd ..   # build da web UI (é embutida)
@@ -191,7 +192,8 @@ sudo apt install libxcb1 libxss1 libdbus-1-3         # Debian/Ubuntu
 Constrói um binário **Linux** dentro do Docker (use *Build do código* para macOS/Windows):
 
 ```bash
-make            # testa → build do bundle web + binário release → abre a web UI
+make            # build do bundle web + binário release → abre a web UI
+make app        # o mesmo, mas roda a suíte de testes antes
 ./dist/jobrabbit
 ```
 
@@ -215,7 +217,7 @@ make tui          # TUI clássica (precisa de TTY)
 ### Testes e diagnóstico
 
 ```bash
-cargo test                     # 120 testes (parser, DB, protocolo, prompts, sanitize, TUI) — ou `make test`
+cargo test                     # 127 testes (parser, DB, protocolo, prompts, sanitize, CLI, TUI) — ou `make test`
 jobrabbit --selftest-agent     # E2E real: roda o claude (prompt seguro, sem navegar) pelo pipeline
 jobrabbit --snapshot           # preview das telas da TUI em texto (sem TTY)
 jobrabbit --doctor             # diagnóstico de ambiente (deps + config, por SO)

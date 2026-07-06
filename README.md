@@ -11,7 +11,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/renanmpimentel/jobrabbit/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/renanmpimentel/jobrabbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-120%20passing-22c55e?style=flat-square)](#-developers)
+[![Tests](https://img.shields.io/badge/tests-127%20passing-22c55e?style=flat-square)](#-developers)
 [![Platforms](https://img.shields.io/badge/Linux%20·%20macOS%20·%20Windows-single%20binary-3178C6?style=flat-square)](#-platform-notes)
 [![i18n](https://img.shields.io/badge/i18n-EN%20·%20pt--BR-8b5cf6?style=flat-square)](#-language)
 
@@ -150,6 +150,7 @@ Where an item shows "—", it's simply skipped — everything else works normall
 ## 🧰 Troubleshooting
 
 - **"`claude` not found"** — install Claude Code and log in (`claude`). Run `jobrabbit --doctor` for a full checkup.
+- **"port 8787 is already in use" / "another jobRabbit instance is already running"** — you probably left a jobRabbit open (check your terminals). Only one instance can use the database at a time; to run on another port use `jobrabbit --port 8788`. `jobrabbit --help` lists every flag.
 - **Linux: binary won't start** — install the libs: `sudo apt install libxcb1 libxss1 libdbus-1-3`.
 - **macOS: "unidentified developer"** — allow it in **System Settings → Privacy & Security**, or run `xattr -d com.apple.quarantine ./jobrabbit-macos-*` once.
 - **Windows: no desktop notifications** — expected; the in-app alerts (toast + Pending badge) still work everywhere.
@@ -169,7 +170,7 @@ human in the loop by default (`review` mode) and never bypasses captchas.
 
 ### Build from source (any OS)
 
-Requires **Rust** (stable) and **Node 20+**.
+Requires **Rust** (stable, via [rustup.rs](https://rustup.rs)) and **Node 20+**.
 
 ```bash
 cd web-ui && npm install && npm run build && cd ..   # build the web UI (gets embedded)
@@ -188,7 +189,8 @@ sudo apt install libxcb1 libxss1 libdbus-1-3         # Debian/Ubuntu
 Builds a **Linux** binary inside Docker (use *Build from source* for macOS/Windows):
 
 ```bash
-make            # test → build the web bundle + release binary → open the web UI
+make            # build the web bundle + release binary → open the web UI
+make app        # same, but runs the test suite first
 ./dist/jobrabbit
 ```
 
@@ -212,7 +214,7 @@ make tui          # classic TUI (needs a TTY)
 ### Tests & diagnostics
 
 ```bash
-cargo test                     # 120 tests (parser, DB, protocol, prompts, sanitize, TUI) — or `make test`
+cargo test                     # 127 tests (parser, DB, protocol, prompts, sanitize, CLI, TUI) — or `make test`
 jobrabbit --selftest-agent     # real E2E: runs claude (safe prompt, no browsing) through the pipeline
 jobrabbit --snapshot           # preview the TUI screens as text (no TTY)
 jobrabbit --doctor             # environment diagnostics (deps + config, per OS)
