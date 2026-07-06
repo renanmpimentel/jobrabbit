@@ -6,7 +6,20 @@ const API = process.env.VITE_API_BASE || "http://localhost:8787";
 
 export default defineConfig({
   plugins: [react()],
-  build: { outDir: "dist", emptyOutDir: true },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-markdown": ["react-markdown"],
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,
