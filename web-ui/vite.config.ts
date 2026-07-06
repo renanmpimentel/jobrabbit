@@ -11,11 +11,32 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          "vendor-motion": ["framer-motion"],
-          "vendor-query": ["@tanstack/react-query"],
-          "vendor-markdown": ["react-markdown"],
+        // Rolldown (Vite 8) replaces object-form manualChunks with codeSplitting.
+        // Each regex also captures the library's exclusive dependency family so
+        // the split matches the old chunks; higher priority wins.
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor-motion",
+              test: /node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/,
+              priority: 20,
+            },
+            {
+              name: "vendor-query",
+              test: /node_modules[\\/]@tanstack[\\/]/,
+              priority: 20,
+            },
+            {
+              name: "vendor-markdown",
+              test: /node_modules[\\/](react-markdown|remark-|rehype-|micromark|mdast-|unist-|unified|hast-|vfile|estree-util|character-entities|decode-named-character-reference|property-information|space-separated-tokens|comma-separated-tokens|trim-lines|html-url-attributes|style-to-object|inline-style-parser|bail|trough|zwitch|devlop|is-plain-obj|longest-streak|markdown-table|ccount)/,
+              priority: 20,
+            },
+            {
+              name: "vendor",
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 10,
+            },
+          ],
         },
       },
     },

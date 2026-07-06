@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Vite 5 → 8** (Rolldown) + `@vitejs/plugin-react` 4 → 6: clears the
+  `npm audit` findings (esbuild dev-server advisory), builds faster, and the
+  vendor chunk split is preserved via the new `codeSplitting` API.
 - **Doctor speaks your language**: `--doctor` and the web Health page follow the
   configured locale (pt-BR fully translated) instead of mixing English into a
   localized UI.
