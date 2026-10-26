@@ -1147,10 +1147,20 @@ mod tests {
         KeyEvent::new(code, KeyModifiers::NONE)
     }
 
+    /// `App::new` with `Settings::load`/`save` redirected to a scratch file,
+    /// so tests never read or overwrite the user's real `settings.json`.
+    fn new_test_app(db: &Db) -> App {
+        let path = std::env::temp_dir().join("jobrabbit-test-settings.json");
+        unsafe {
+            std::env::set_var("JOBRABBIT_SETTINGS_PATH", &path);
+        }
+        App::new(db).unwrap()
+    }
+
     #[test]
     fn navigation_by_tabs() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         assert_eq!(app.active, 0);
         app.on_key(key_code(KeyCode::Tab), &tx, &db);
@@ -1164,7 +1174,7 @@ mod tests {
     #[test]
     fn editing_does_not_switch_tab() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 1;
         app.editing = Some(EditField::Background);
@@ -1177,7 +1187,7 @@ mod tests {
     #[test]
     fn config_edits_text_setting() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 5;
         app.config_sel = 0; // LinkedinUrl
@@ -1194,7 +1204,7 @@ mod tests {
     #[test]
     fn config_toggles_bool_with_space() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 5;
         // DryRun is index 8 in SETTING_KINDS (after ApplyMode=3, RequireHumanReview=4,
@@ -1208,7 +1218,7 @@ mod tests {
     #[test]
     fn config_edits_answer_bank() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 5;
         app.config_sel = SETTING_KINDS.len(); // first answer after settings
@@ -1229,7 +1239,7 @@ mod tests {
     fn toggle_and_remove_variant() {
         let db = Db::open_in_memory().unwrap();
         db.add_variant("Senior Rust", "senior rust remoto").unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 1;
         app.variant_sel = 0;
@@ -1244,7 +1254,7 @@ mod tests {
     fn resolve_pending_in_tab() {
         let db = Db::open_in_memory().unwrap();
         db.add_pending(None, "captcha", "x", None).unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let (tx, _rx) = unbounded_channel::<AppEvent>();
         app.active = 2;
         app.pending_sel = 0;
@@ -1256,7 +1266,7 @@ mod tests {
     #[test]
     fn agent_pipeline_persists_to_db() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
 
         app.on_app_event(AppEvent::AgentStarted, &db);
         assert_eq!(app.agent_status, AgentStatus::Running);
@@ -1318,7 +1328,7 @@ mod tests {
     #[test]
     fn dedup_pending_in_pipeline() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         let pend = || AppEvent::AgentPending {
             url: Some("https://acme/9".into()),
             kind: "captcha".into(),
@@ -1335,7 +1345,7 @@ mod tests {
     #[test]
     fn feedback_persists_and_appears() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         app.on_app_event(
             AppEvent::AgentFeedback {
                 summary: "bom progresso".into(),
@@ -1350,7 +1360,7 @@ mod tests {
     #[test]
     fn cv_review_persists_and_focuses_ats_tab() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         app.on_app_event(
             AppEvent::AgentCvReview {
                 score: 82,
@@ -1368,7 +1378,7 @@ mod tests {
     #[test]
     fn agent_finished_returns_to_idle_and_logs() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         app.on_app_event(AppEvent::AgentStarted, &db);
         assert_eq!(app.agent_status, AgentStatus::Running);
         app.on_app_event(
@@ -1386,7 +1396,7 @@ mod tests {
     #[test]
     fn session_log_receives_agent_text() {
         let db = Db::open_in_memory().unwrap();
-        let mut app = App::new(&db).unwrap();
+        let mut app = new_test_app(&db);
         app.on_app_event(AppEvent::AgentText("evaluating job X".into()), &db);
         assert!(app.log.iter().any(|l| l.contains("evaluating job X")));
     }
@@ -1394,7 +1404,7 @@ mod tests {
     #[test]
     fn renders_dashboard_with_title() {
         let db = Db::open_in_memory().unwrap();
-        let app = App::new(&db).unwrap();
+        let app = new_test_app(&db);
         let out = snapshot(&app, 100, 26);
         assert!(out.contains("jobRabbit"));
         assert!(out.contains("Dashboard"));
