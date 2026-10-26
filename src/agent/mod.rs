@@ -15,7 +15,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::config::BrowserBackend;
 use crate::event::AppEvent;
-use stream::{parse_line, StreamEvent};
+use stream::{EventAssembler, StreamEvent};
 
 /// Configuration for invoking `claude`.
 #[derive(Debug, Clone)]
@@ -126,49 +126,48 @@ pub async fn process_stream(
     events: &UnboundedSender<AppEvent>,
 ) -> RunSummary {
     let mut summary = RunSummary::default();
+    let mut assembler = EventAssembler::new();
 
     while let Some(line) = rx.recv().await {
         let _ = events.send(AppEvent::AgentRaw(line.clone()));
 
-        let Some(ev) = parse_line(&line) else {
-            continue;
-        };
-
-        match &ev {
-            StreamEvent::System(s) if s.is_init() => {
-                if let Some(sid) = &s.session_id {
-                    let _ = events.send(AppEvent::AgentSessionId(sid.clone()));
-                }
-            }
-            StreamEvent::Assistant(_) => {
-                // Assistant text may contain protocol lines (jobs,
-                // applications, pending) and/or human narration.
-                if let Some(text) = ev.assistant_text() {
-                    for l in text.lines() {
-                        if let Some(out) = protocol::parse(l) {
-                            let _ = events.send(AppEvent::from_agent_output(out));
-                        } else if !l.trim().is_empty() {
-                            let _ = events.send(AppEvent::AgentText(l.to_string()));
-                        }
+        for ev in assembler.feed(&line) {
+            match &ev {
+                StreamEvent::System(s) if s.is_init() => {
+                    if let Some(sid) = &s.session_id {
+                        let _ = events.send(AppEvent::AgentSessionId(sid.clone()));
                     }
                 }
-                for (name, input) in ev.tool_uses() {
-                    let _ = events.send(AppEvent::AgentToolUse { name, input });
+                StreamEvent::Assistant(_) => {
+                    // Assistant text may contain protocol lines (jobs,
+                    // applications, pending) and/or human narration.
+                    if let Some(text) = ev.assistant_text() {
+                        for l in text.lines() {
+                            if let Some(out) = protocol::parse(l) {
+                                let _ = events.send(AppEvent::from_agent_output(out));
+                            } else if !l.trim().is_empty() {
+                                let _ = events.send(AppEvent::AgentText(l.to_string()));
+                            }
+                        }
+                    }
+                    for (name, input) in ev.tool_uses() {
+                        let _ = events.send(AppEvent::AgentToolUse { name, input });
+                    }
                 }
+                StreamEvent::Result(r) => {
+                    summary = RunSummary {
+                        result: r.result.clone(),
+                        num_turns: r.num_turns,
+                        cost_usd: r.total_cost_usd,
+                        is_error: r.is_error,
+                    };
+                }
+                _ => {}
             }
-            StreamEvent::Result(r) => {
-                summary = RunSummary {
-                    result: r.result.clone(),
-                    num_turns: r.num_turns,
-                    cost_usd: r.total_cost_usd,
-                    is_error: r.is_error,
-                };
-            }
-            _ => {}
-        }
 
-        if ev.is_terminal() {
-            break;
+            if ev.is_terminal() {
+                return summary;
+            }
         }
     }
 

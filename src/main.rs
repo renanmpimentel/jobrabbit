@@ -438,7 +438,10 @@ async fn selftest_agent() -> Result<()> {
         {\"type\":\"pending\",\"url\":\"https://test/42\",\"kind\":\"captcha\",\"description\":\"solve test captcha\"}";
 
     // Isolated test: no browsing at all, but bypassing permissions (no prompts).
+    // Uses the configured `claude_bin`, same as the real run path, instead of the
+    // `AgentConfig` default.
     let cfg = AgentConfig {
+        claude_bin: app.settings.claude_bin.clone(),
         browser: None,
         bypass_permissions: true,
         ..AgentConfig::default()
