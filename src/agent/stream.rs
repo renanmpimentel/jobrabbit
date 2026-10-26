@@ -204,6 +204,69 @@ pub fn parse_line(line: &str) -> Option<StreamEvent> {
     }
 }
 
+/// A stream-json event may arrive split across several physical lines — on
+/// Windows, ConPTY reflows output at the PTY's column width, so a single
+/// multi-KB event (routine for `claude`, e.g. a long `hook_response` or the
+/// `system`/`init` line) can be cut into several unparseable fragments with no
+/// terminal-width setting large enough to rule that out for every event.
+///
+/// `EventAssembler` buffers raw chunks and extracts complete JSON values with
+/// a streaming parser (which reports exactly how many bytes each value
+/// consumed), so fragments are transparently reassembled regardless of where
+/// the PTY happened to break the line.
+#[derive(Default)]
+pub struct EventAssembler {
+    buf: String,
+}
+
+/// Chunks are typically well under this; if the buffer keeps growing without
+/// ever completing a value, the input is genuinely corrupt (not just
+/// reflowed) and is dropped to bound memory use.
+const MAX_BUFFERED_BYTES: usize = 4 * 1024 * 1024;
+
+impl EventAssembler {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Feeds one raw chunk (a physical line from the PTY, without its line
+    /// terminator) and returns every complete event it was able to extract.
+    pub fn feed(&mut self, chunk: &str) -> Vec<StreamEvent> {
+        self.buf.push_str(chunk);
+
+        let mut out = Vec::new();
+        loop {
+            let mut de = serde_json::Deserializer::from_str(&self.buf).into_iter::<StreamEvent>();
+            match de.next() {
+                Some(Ok(ev)) => {
+                    let consumed = de.byte_offset();
+                    self.buf.drain(..consumed);
+                    out.push(ev);
+                }
+                Some(Err(err)) => {
+                    if !err.is_eof() {
+                        tracing::debug!(
+                            %err,
+                            len = self.buf.len(),
+                            "unrecognized stream-json data, resyncing"
+                        );
+                        self.buf.clear();
+                    } else if self.buf.len() > MAX_BUFFERED_BYTES {
+                        tracing::debug!(
+                            len = self.buf.len(),
+                            "stream-json buffer exceeded limit without completing, dropping"
+                        );
+                        self.buf.clear();
+                    }
+                    break; // incomplete (need more data) or resynced — either way, stop
+                }
+                None => break, // buffer empty / whitespace-only
+            }
+        }
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,5 +377,109 @@ mod tests {
         let line = r#"{"type":"system","subtype":"hook_started","hook_name":"X"}"#;
         let ev = parse_line(line).unwrap();
         assert!(ev.is_hook_noise());
+    }
+
+    /// Splits `s` into arbitrary fixed-size chunks, simulating how ConPTY reflow
+    /// cuts a line at a column width with no regard for JSON structure.
+    fn chunk(s: &str, width: usize) -> Vec<String> {
+        s.as_bytes()
+            .chunks(width)
+            .map(|c| String::from_utf8_lossy(c).into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn assembler_reassembles_long_init_event_split_into_fragments() {
+        let sid = "windows-long-init-session";
+        let line = format!(
+            r#"{{"type":"system","subtype":"init","session_id":"{sid}","model":"claude-opus-4-8","cwd":"/tmp","padding":"{}"}}"#,
+            "x".repeat(20_000)
+        );
+        assert!(line.len() > 8192, "fixture must exceed a typical PTY width");
+
+        let mut assembler = EventAssembler::new();
+        let mut events = Vec::new();
+        for frag in chunk(&line, 140) {
+            events.extend(assembler.feed(&frag));
+        }
+
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            StreamEvent::System(s) => {
+                assert!(s.is_init());
+                assert_eq!(s.session_id.as_deref(), Some(sid));
+            }
+            other => panic!("expected System, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn assembler_reassembles_long_assistant_event_split_into_fragments() {
+        let text = format!("hello {}", "y".repeat(20_000));
+        let line = format!(
+            r#"{{"type":"assistant","session_id":"s1","message":{{"role":"assistant","content":[{{"type":"text","text":"{text}"}}]}}}}"#,
+        );
+        assert!(line.len() > 8192, "fixture must exceed a typical PTY width");
+
+        let mut assembler = EventAssembler::new();
+        let mut events = Vec::new();
+        for frag in chunk(&line, 97) {
+            events.extend(assembler.feed(&frag));
+        }
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].assistant_text().as_deref(), Some(text.as_str()));
+    }
+
+    #[test]
+    fn assembler_reassembles_long_result_event_split_into_fragments() {
+        let result_text = format!("done: {}", "z".repeat(20_000));
+        let line = format!(
+            r#"{{"type":"result","subtype":"success","is_error":false,"result":"{result_text}","num_turns":3,"total_cost_usd":1.23,"session_id":"s-result"}}"#,
+        );
+        assert!(line.len() > 8192, "fixture must exceed a typical PTY width");
+
+        let mut assembler = EventAssembler::new();
+        let mut events = Vec::new();
+        for frag in chunk(&line, 251) {
+            events.extend(assembler.feed(&frag));
+        }
+
+        assert_eq!(events.len(), 1);
+        assert!(events[0].is_terminal());
+        match &events[0] {
+            StreamEvent::Result(r) => {
+                assert!(!r.is_error);
+                assert_eq!(r.session_id.as_deref(), Some("s-result"));
+                assert_eq!(r.num_turns, Some(3));
+                assert_eq!(r.total_cost_usd, Some(1.23));
+                assert_eq!(r.result.as_deref(), Some(result_text.as_str()));
+            }
+            other => panic!("expected Result, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn assembler_handles_consecutive_events_with_no_separator() {
+        let a = r#"{"type":"system","subtype":"init","session_id":"a"}"#;
+        let b = r#"{"type":"result","subtype":"success","is_error":false,"session_id":"a"}"#;
+
+        let mut assembler = EventAssembler::new();
+        let events = assembler.feed(&format!("{a}{b}"));
+
+        assert_eq!(events.len(), 2);
+        assert!(matches!(events[0], StreamEvent::System(_)));
+        assert!(matches!(events[1], StreamEvent::Result(_)));
+    }
+
+    #[test]
+    fn assembler_resyncs_after_genuinely_invalid_data() {
+        let mut assembler = EventAssembler::new();
+        assert!(assembler.feed("not json at all").is_empty());
+
+        // A later, well-formed event is still parsed correctly.
+        let events = assembler.feed(r#"{"type":"result","subtype":"success","is_error":false}"#);
+        assert_eq!(events.len(), 1);
+        assert!(events[0].is_terminal());
     }
 }

@@ -19,13 +19,7 @@ pub fn db_path() -> Result<PathBuf> {
 }
 
 /// Path to the settings file (JSON).
-///
-/// Honors `JOBRABBIT_SETTINGS_PATH` when set — tests use this so `Settings::load`/`save`
-/// never touch the real, user-wide `settings.json`.
 pub fn settings_path() -> Result<PathBuf> {
-    if let Ok(p) = std::env::var("JOBRABBIT_SETTINGS_PATH") {
-        return Ok(PathBuf::from(p));
-    }
     Ok(data_dir()?.join("settings.json"))
 }
 

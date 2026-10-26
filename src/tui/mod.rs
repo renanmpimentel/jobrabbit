@@ -11,6 +11,7 @@ pub mod profile;
 pub mod sessionlog;
 
 use anyhow::Result;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use crossterm::{
@@ -246,6 +247,10 @@ pub struct App {
     pub current_session_id: Option<i64>,
     pub pending_sel: usize,
     pub settings: Settings,
+    /// Path `settings` was loaded from and is saved back to. Explicit (rather than
+    /// always resolving `config::settings_path()`) so tests can point each `App` at
+    /// its own scratch file instead of the user's real, shared `settings.json`.
+    settings_path: PathBuf,
     /// Answer being edited: (pending_id, field_key, label).
     pub answer_input: Option<(i64, String, String)>,
 
@@ -279,6 +284,15 @@ pub struct App {
 
 impl App {
     pub fn new(db: &Db) -> Result<Self> {
+        let settings_path = crate::config::settings_path().unwrap_or_default();
+        Self::new_with_settings_path(db, settings_path)
+    }
+
+    /// Like [`Self::new`], but with an explicit settings path instead of resolving
+    /// `config::settings_path()` — tests use this so each `App` reads/writes its own
+    /// scratch file rather than the user's real, shared `settings.json`.
+    pub fn new_with_settings_path(db: &Db, settings_path: PathBuf) -> Result<Self> {
+        let settings = Settings::load_from(&settings_path).unwrap_or_default();
         let mut app = Self {
             should_quit: false,
             active: 0,
@@ -289,7 +303,8 @@ impl App {
             new_variant_label: String::new(),
             current_session_id: None,
             pending_sel: 0,
-            settings: Settings::load(),
+            settings,
+            settings_path,
             answer_input: None,
             config_sel: 0,
             config_edit: None,
@@ -323,6 +338,11 @@ impl App {
             app.push_log("✔ claude found. Set up Profile (tab 2) and press [r] to run.".into());
         }
         Ok(app)
+    }
+
+    /// Saves `self.settings` to the path this `App` was constructed with.
+    fn save_settings(&self) -> Result<()> {
+        self.settings.save_to(&self.settings_path)
     }
 
     /// Checks if `claude` is available; logs and notifies if missing.
@@ -409,12 +429,12 @@ impl App {
             KeyCode::Char('r') => self.trigger_run(tx, db),
             KeyCode::Char('p') => {
                 self.settings.cycle_apply_mode();
-                let _ = self.settings.save();
+                let _ = self.save_settings();
                 self.push_log(format!("⚙ application mode: {}", self.settings.apply_mode));
             }
             KeyCode::Char('y') => {
                 self.settings.dry_run = !self.settings.dry_run;
-                let _ = self.settings.save();
+                let _ = self.save_settings();
                 self.push_log(format!(
                     "🧪 dry-run (simulation): {}",
                     if self.settings.dry_run { "on" } else { "off" }
@@ -422,7 +442,7 @@ impl App {
             }
             KeyCode::Char('i') => {
                 self.settings.auto_run_on_idle = !self.settings.auto_run_on_idle;
-                let _ = self.settings.save();
+                let _ = self.save_settings();
                 self.push_log(format!(
                     "⏾ auto-run when idle: {}",
                     if self.settings.auto_run_on_idle {
@@ -743,7 +763,7 @@ impl App {
                     match self.config_edit.take() {
                         Some(ConfigTarget::Setting(kind)) => {
                             kind.apply_text(&mut self.settings, &value);
-                            let _ = self.settings.save();
+                            let _ = self.save_settings();
                         }
                         Some(ConfigTarget::Answer { key, label }) => {
                             let _ = db.set_answer(&key, &label, value.trim());
@@ -801,7 +821,7 @@ impl App {
                 if let Some(kind) = self.selected_setting() {
                     if kind.is_cycle() {
                         kind.toggle(&mut self.settings);
-                        let _ = self.settings.save();
+                        let _ = self.save_settings();
                     }
                 }
             }
@@ -820,7 +840,7 @@ impl App {
         if let Some(kind) = self.selected_setting() {
             if kind.is_cycle() {
                 kind.toggle(&mut self.settings);
-                let _ = self.settings.save();
+                let _ = self.save_settings();
             } else {
                 self.editor = TextEditor::new(&kind.value_str(&self.settings));
                 self.config_edit = Some(ConfigTarget::Setting(kind));
@@ -942,7 +962,7 @@ impl App {
                 ));
                 // Saves the file for upload in applications that require it.
                 self.settings.cv_file_path = path.to_string();
-                let _ = self.settings.save();
+                let _ = self.save_settings();
                 self.spawn_session(prompt, "profile imported from CV", tx);
             }
             Err(e) => {
@@ -956,7 +976,7 @@ impl App {
         self.push_log(format!("🔗 importing profile from LinkedIn: {url}"));
         // Saves as default for next imports.
         self.settings.linkedin_url = url.to_string();
-        let _ = self.settings.save();
+        let _ = self.save_settings();
         let prompt = crate::core::actions::import_linkedin_prompt(
             url,
             self.settings.locale,
@@ -1149,12 +1169,24 @@ mod tests {
 
     /// `App::new` with `Settings::load`/`save` redirected to a scratch file,
     /// so tests never read or overwrite the user's real `settings.json`.
+    /// `App::new` with `Settings::load`/`save` redirected to a scratch file unique to
+    /// this call, so tests never touch the user's real `settings.json` and never share
+    /// state with each other (parallel `cargo test` runs many of these concurrently).
     fn new_test_app(db: &Db) -> App {
-        let path = std::env::temp_dir().join("jobrabbit-test-settings.json");
-        unsafe {
-            std::env::set_var("JOBRABBIT_SETTINGS_PATH", &path);
-        }
-        App::new(db).unwrap()
+        // Unique across both concurrent test threads (counter) and repeated process
+        // invocations of the same single test (nanosecond timestamp + pid) — a fixed
+        // or per-process-only name would let one test run's leftover file be read as
+        // the starting state of the next, independent run.
+        static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let pid = std::process::id();
+        let path =
+            std::env::temp_dir().join(format!("jobrabbit-test-settings-{pid}-{nanos}-{n}.json"));
+        App::new_with_settings_path(db, path).unwrap()
     }
 
     #[test]

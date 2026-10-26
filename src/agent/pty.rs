@@ -88,10 +88,10 @@ pub fn spawn(
             // On Windows, ConPTY is a real terminal emulator: it reflows output at
             // the PTY's column width, inserting hard line breaks into lines wider
             // than `cols`. `claude`'s stream-json lines routinely run into the
-            // thousands of characters (e.g. the system/init line), so a narrow
-            // width silently shreds a single JSON line into multiple unparseable
-            // fragments. A near-max column count keeps that from happening in
-            // practice. Unix PTYs don't reflow, so this is a no-op there.
+            // thousands of characters, so this only reduces how often that
+            // happens — `stream::EventAssembler` is what actually reassembles
+            // reflowed fragments back into complete events regardless of width.
+            // Unix PTYs don't reflow, so this is a no-op there.
             cols: 8192,
             pixel_width: 0,
             pixel_height: 0,
@@ -183,5 +183,59 @@ mod tests {
         assert_eq!(l2.as_deref(), Some("line2"));
 
         let _ = handle.wait();
+    }
+
+    /// End-to-end through the real PTY (not just [`super::super::stream::EventAssembler`]
+    /// in isolation): a single stream-json event wider than the PTY's `cols` must still
+    /// come out intact. On Windows this is the actual reflow scenario reported in review
+    /// (`cols: 8192` alone cannot bound an arbitrarily long event); on Unix `cat` just
+    /// writes the line through unchanged and this exercises the same assembly path.
+    /// Bounded by a timeout so a regression here fails fast instead of hanging the suite.
+    #[tokio::test]
+    async fn spawn_reassembles_event_wider_than_pty_cols() {
+        use crate::agent::stream::{EventAssembler, StreamEvent};
+        use std::time::Duration;
+
+        let sid = "pty-reflow-test-session";
+        let result_text = "r".repeat(20_000);
+        let line = format!(
+            r#"{{"type":"result","subtype":"success","is_error":false,"session_id":"{sid}","num_turns":1,"total_cost_usd":0.5,"result":"{result_text}"}}"#,
+        );
+        assert!(line.len() > 8192, "fixture must exceed the PTY width");
+
+        let path = std::env::temp_dir().join("jobrabbit-pty-reflow-test.ndjson");
+        std::fs::write(&path, format!("{line}\n")).expect("write fixture");
+
+        let (mut handle, mut rx) = spawn(
+            "sh",
+            &["-c".to_string(), format!("cat '{}'", path.display())],
+            None,
+        )
+        .expect("spawn should work");
+
+        let mut assembler = EventAssembler::new();
+        let mut events = Vec::new();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+        while events.is_empty() {
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            let raw = tokio::time::timeout(remaining, rx.recv())
+                .await
+                .expect("timed out waiting for the reflowed event to be reassembled")
+                .expect("PTY channel closed before the event arrived");
+            events.extend(assembler.feed(&raw));
+        }
+
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            StreamEvent::Result(r) => {
+                assert_eq!(r.session_id.as_deref(), Some(sid));
+                assert_eq!(r.num_turns, Some(1));
+                assert_eq!(r.result.as_deref(), Some(result_text.as_str()));
+            }
+            other => panic!("expected Result, got {other:?}"),
+        }
+
+        let _ = handle.wait();
+        let _ = std::fs::remove_file(&path);
     }
 }
