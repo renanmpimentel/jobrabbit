@@ -1,0 +1,138 @@
+name: Release after approved merge
+
+# A release includes code only after it is merged and the CI push on main passes.
+# workflow_dispatch lets maintainers recover an interrupted run or release a PR
+# merged before this workflow existed.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Number of an approved, merged PR to release or resume.
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: jobrabbit-releases
+  queue: max
+
+jobs:
+  prepare:
+    name: Prepare release tag
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Check merge, approval and CI
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_PR: ${{ inputs.pr_number }}
+          CI_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            pr="$INPUT_PR"
+            [[ "$pr" =~ ^[1-9][0-9]*$ ]]
+          else
+            pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$CI_SHA/pulls" |
+              jq -r --arg sha "$CI_SHA" \
+                '[.[] | select(.merge_commit_sha == $sha and .merged_at != null and .base.ref == "main")][0].number // empty')
+            if [[ -z "$pr" ]]; then
+              echo "No merged PR belongs to this main commit; skipping."
+              exit 0
+            fi
+          fi
+
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          # shellcheck disable=SC2016
+          review=$(gh api graphql \
+            -F owner="$GITHUB_REPOSITORY_OWNER" -F name="$repo_name" -F number="$pr" \
+            -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){merged reviewDecision baseRefName mergeCommit{oid}}}}' \
+            --jq '.data.repository.pullRequest')
+          if ! jq -e '.merged == true and .reviewDecision == "APPROVED" and .baseRefName == "main" and .mergeCommit.oid != null' <<< "$review" >/dev/null; then
+            if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+              echo "PR #$pr is not approved and merged into main." >&2
+              exit 1
+            fi
+            echo "PR #$pr does not qualify for an automatic release; skipping."
+            exit 0
+          fi
+
+          merge_sha=$(jq -r '.mergeCommit.oid' <<< "$review")
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$merge_sha" origin/main
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            gh run list --workflow ci.yml --commit "$merge_sha" \
+              --json conclusion,event,headSha --limit 20 |
+              jq -e --arg sha "$merge_sha" \
+                'any(.[]; .event == "push" and .conclusion == "success" and .headSha == $sha)' >/dev/null
+          fi
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version and tag the release
+        id: tag
+        if: steps.check.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.check.outputs.pr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr_title=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.title')
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main --tags
+            git reset --hard origin/main
+            result=$(python3 scripts/prepare_release.py \
+              --pr "$PR_NUMBER" --title "$pr_title" --repo "$GITHUB_REPOSITORY")
+            tag=$(jq -r '.tag' <<< "$result")
+            created=$(jq -r '.created' <<< "$result")
+            if [[ "$created" == "false" ]]; then
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            git add Cargo.toml Cargo.lock CHANGELOG.md
+            git commit -m "chore: release $tag (PR #$PR_NUMBER)"
+            git tag -a "$tag" -m "Release $tag" -m "Release-PR: $PR_NUMBER"
+            if git push --atomic origin HEAD:refs/heads/main "refs/tags/$tag"; then
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git tag -d "$tag"
+            echo "Release push raced with another main update; retrying ($attempt/3)."
+          done
+          echo "Could not publish the version commit and tag atomically." >&2
+          exit 1
+
+  publish:
+    name: Build and publish release
+    needs: prepare
+    if: needs.prepare.outputs.tag != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+    permissions:
+      contents: write

@@ -23,9 +23,11 @@ node_modules/
 
 # OS / editor cruft
 .DS_Store
+__pycache__/
+*.pyc
 
 # Browser-automation artifacts (console/page dumps from MCP tooling; may contain PII)
 .playwright-mcp/
 
-# Local design docs / planning notes (not versioned)
+# Local design docs / planning notes (tracked ADRs are added explicitly)
 docs/

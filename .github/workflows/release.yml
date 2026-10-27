@@ -1,11 +1,17 @@
 name: Release
 
-# Builds a native binary for each OS and attaches it to the GitHub Release
-# for the pushed tag. The web UI is compiled first and embedded into the
-# binary (rust-embed), so each artifact is a single self-contained executable.
+# Builds four native binaries for a pushed tag or an approved PR release.
+# The web UI is embedded into each self-contained binary. A release is only
+# published after all four builds and uploads have succeeded.
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing release tag to build.
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -44,6 +50,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       # Linux links against D-Bus/X11 (notifications, idle); other OSes don't.
       - name: Install Linux build libraries
@@ -85,8 +93,47 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.artifact }}"
 
-      - name: Attach to the GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: dist/${{ matrix.artifact }}
-          fail_on_unmatched_files: true
+          name: binary-${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify, upload and publish all binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            jobrabbit-linux-x86_64
+            jobrabbit-macos-arm64
+            jobrabbit-macos-x86_64
+            jobrabbit-windows-x86_64.exe
+          )
+          for artifact in "${expected[@]}"; do
+            test -s "dist/$artifact"
+          done
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --draft --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.assets | map(select(.size > 0) | .name)')
+          for artifact in "${expected[@]}"; do
+            jq -e --arg name "$artifact" 'index($name) != null' <<< "$assets" >/dev/null
+          done
+          gh release edit "$RELEASE_TAG" --draft=false
