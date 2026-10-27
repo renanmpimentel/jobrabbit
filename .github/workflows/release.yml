@@ -132,7 +132,8 @@ jobs:
             gh release create "$RELEASE_TAG" --draft --generate-notes
           fi
           gh release upload "$RELEASE_TAG" dist/* --clobber
-          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.assets | map(select(.size > 0) | .name)')
+          # The REST endpoint by tag returns 404 while a release is a draft.
+          assets=$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[] | select(.size > 0) | .name]')
           for artifact in "${expected[@]}"; do
             jq -e --arg name "$artifact" 'index($name) != null' <<< "$assets" >/dev/null
           done
