@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-27
+
 ### Changed
 - **Vite 5 → 8** (Rolldown) + `@vitejs/plugin-react` 4 → 6: clears the
   `npm audit` findings (esbuild dev-server advisory), builds faster, and the
@@ -31,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   address (os error 6)`.
 - **Unknown `/api/*` routes return a JSON 404** instead of the SPA's HTML with
   status 200.
+
+### Merged PR
+- [#2](https://github.com/renanmpimentel/jobrabbit/pull/2): fix(agent): resolve Windows PTY hang and silent data loss in claude sessions
 
 ## [1.5.0] - 2026-07-06
 
@@ -216,5 +221,6 @@ logins, or fields it can't fill.
   keys (e.g. `pretensao_salarial`) become their English equivalents (e.g. `salary_expectation`),
   preserving saved values.
 
-[Unreleased]: https://github.com/renanmpimentel/jobrabbit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/renanmpimentel/jobrabbit/compare/v1.5.1...HEAD
 [0.1.0]: https://github.com/renanmpimentel/jobrabbit/releases/tag/v0.1.0
+[1.5.1]: https://github.com/renanmpimentel/jobrabbit/releases/tag/v1.5.1
